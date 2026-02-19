@@ -1,0 +1,14 @@
+<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Unfiltered items above the sieve -->
+  <circle cx="4.5" cy="3" r="1.5" fill="#C5C5C5"/>
+  <circle cx="12" cy="2" r="1.5" fill="#C5C5C5"/>
+  <circle cx="19.5" cy="3.5" r="1.5" fill="#C5C5C5"/>
+  <circle cx="8" cy="6" r="1.2" fill="#C5C5C5"/>
+  <circle cx="16" cy="6.5" r="1.2" fill="#C5C5C5"/>
+  <!-- The sieve (horizontal filter bar) -->
+  <rect x="1" y="10" width="22" height="2.5" rx="1.25" fill="#C5C5C5"/>
+  <!-- Filtered output below -->
+  <rect x="5" y="15" width="2" height="7" rx="1" fill="#C5C5C5"/>
+  <rect x="11" y="15" width="2" height="7" rx="1" fill="#C5C5C5"/>
+  <rect x="17" y="15" width="2" height="7" rx="1" fill="#C5C5C5"/>
+</svg>

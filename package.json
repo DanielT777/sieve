@@ -1,0 +1,243 @@
+{
+  "name": "sieve",
+  "displayName": "Sieve",
+  "description": "Filter AI slop before it hits your codebase. A structured human review workflow for AI-generated code.",
+  "version": "0.1.0",
+  "publisher": "DanielT777",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/DanielT777/sieve"
+  },
+  "bugs": {
+    "url": "https://github.com/DanielT777/sieve/issues"
+  },
+  "homepage": "https://github.com/DanielT777/sieve#readme",
+  "extensionDependencies": ["vscode.git"],
+  "keywords": ["ai", "code-review", "diff", "git", "productivity"],
+  "categories": ["Other", "SCM Providers"],
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "main": "./dist/extension.js",
+  "icon": "assets/sieve.png",
+  "activationEvents": [
+    "onView:sieve.reviewDesk",
+    "workspaceContains:.git"
+  ],
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "sieve",
+          "title": "Sieve",
+          "icon": "assets/sieve-activitybar.svg"
+        }
+      ]
+    },
+    "views": {
+      "sieve": [
+        {
+          "id": "sieve.reviewDesk",
+          "name": "Review Desk",
+          "contextualTitle": "Sieve — Review Desk"
+        }
+      ]
+    },
+    "viewsWelcome": [
+      {
+        "view": "sieve.reviewDesk",
+        "contents": "No changed files to review.\n\nMake changes in your workspace and press refresh.\n\n[Refresh](command:sieve.refresh)"
+      }
+    ],
+    "commands": [
+      {
+        "command": "sieve.refresh",
+        "title": "Refresh",
+        "category": "Sieve",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "sieve.markReviewed",
+        "title": "Mark as Reviewed",
+        "category": "Sieve",
+        "icon": "$(pass-filled)"
+      },
+      {
+        "command": "sieve.flag",
+        "title": "Flag for Discussion",
+        "category": "Sieve",
+        "icon": "$(flag)"
+      },
+      {
+        "command": "sieve.submitAnnotation",
+        "title": "Add Annotation",
+        "category": "Sieve"
+      },
+      {
+        "command": "sieve.cycleCategory",
+        "title": "Cycle Annotation Category",
+        "category": "Sieve",
+        "icon": "$(tag)"
+      },
+      {
+        "command": "sieve.deleteAnnotation",
+        "title": "Delete Annotation",
+        "category": "Sieve",
+        "icon": "$(trash)"
+      },
+      {
+        "command": "sieve.export",
+        "title": "Export Review",
+        "category": "Sieve",
+        "icon": "$(export)"
+      },
+      {
+        "command": "sieve.filterByStatus",
+        "title": "Filter by Review Status",
+        "category": "Sieve",
+        "icon": "$(filter)"
+      },
+      {
+        "command": "sieve.openDiff",
+        "title": "Open Diff",
+        "category": "Sieve"
+      },
+      {
+        "command": "sieve.clearReview",
+        "title": "Clear Review",
+        "category": "Sieve",
+        "icon": "$(clear-all)"
+      }
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "sieve.refresh",
+          "when": "view == sieve.reviewDesk",
+          "group": "navigation@1"
+        },
+        {
+          "command": "sieve.export",
+          "when": "view == sieve.reviewDesk",
+          "group": "navigation@2"
+        },
+        {
+          "command": "sieve.filterByStatus",
+          "when": "view == sieve.reviewDesk",
+          "group": "navigation@3"
+        },
+        {
+          "command": "sieve.clearReview",
+          "when": "view == sieve.reviewDesk",
+          "group": "navigation@4"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "sieve.markReviewed",
+          "when": "view == sieve.reviewDesk && viewItem == file",
+          "group": "1_triage@1"
+        },
+        {
+          "command": "sieve.flag",
+          "when": "view == sieve.reviewDesk && viewItem == file",
+          "group": "1_triage@2"
+        }
+      ],
+      "comments/commentThread/context": [
+        {
+          "command": "sieve.submitAnnotation",
+          "group": "inline",
+          "when": "commentController == sieve"
+        }
+      ],
+      "comments/commentThread/title": [
+        {
+          "command": "sieve.cycleCategory",
+          "group": "inline",
+          "when": "commentController == sieve"
+        },
+        {
+          "command": "sieve.deleteAnnotation",
+          "group": "inline",
+          "when": "commentController == sieve && !commentThreadIsEmpty"
+        }
+      ]
+    },
+    "keybindings": [
+      {
+        "command": "sieve.markReviewed",
+        "key": "space",
+        "when": "focusedView == sieve.reviewDesk"
+      },
+      {
+        "command": "sieve.flag",
+        "key": "f",
+        "when": "focusedView == sieve.reviewDesk"
+      },
+      {
+        "command": "sieve.export",
+        "key": "e",
+        "when": "focusedView == sieve.reviewDesk"
+      },
+      {
+        "command": "sieve.openDiff",
+        "key": "enter",
+        "when": "focusedView == sieve.reviewDesk"
+      },
+      {
+        "command": "sieve.refresh",
+        "key": "f5",
+        "when": "focusedView == sieve.reviewDesk"
+      }
+    ],
+    "configuration": {
+      "title": "Sieve",
+      "properties": {
+        "sieve.autoRefresh": {
+          "type": "boolean",
+          "default": true,
+          "description": "Watch for git changes and automatically refresh the Review Desk.",
+          "scope": "resource"
+        },
+        "sieve.defaultExporter": {
+          "type": "string",
+          "enum": ["claude", "generic", "markdown"],
+          "enumDescriptions": [
+            "XML-tagged prompt optimised for Claude (Claude Code, Claude Chat)",
+            "Markdown prompt for any LLM (ChatGPT, Copilot Chat, etc.)",
+            "Clean markdown report for documentation or sharing"
+          ],
+          "default": "generic",
+          "description": "Default export format when using the Export Review command.",
+          "scope": "resource"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "pnpm run package",
+    "compile": "node esbuild.js",
+    "compile:watch": "node esbuild.js --watch",
+    "check-types": "tsc --noEmit",
+    "package": "pnpm run check-types && node esbuild.js --production",
+    "lint": "eslint src",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:integration": "vscode-test"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.17.0",
+    "@types/node": "^20.17.0",
+    "@types/vscode": "^1.85.0",
+    "@vscode/test-electron": "^2.4.1",
+    "@vscode/vsce": "^3.2.1",
+    "esbuild": "^0.24.2",
+    "eslint": "^9.17.0",
+    "prettier": "^3.4.2",
+    "typescript": "^5.7.2",
+    "typescript-eslint": "^8.18.0",
+    "vitest": "^2.1.8"
+  }
+}

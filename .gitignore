@@ -1,0 +1,11 @@
+node_modules/
+dist/
+out/
+*.vsix
+.vscode-test/
+coverage/
+
+# Sieve review sessions are personal — don't commit them
+.sieve/sessions/
+
+.DS_Store

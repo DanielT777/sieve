@@ -1,0 +1,10 @@
+{
+  "rules": [
+    {
+      "id": "no-any",
+      "label": "No 'any' type in TypeScript",
+      "category": "style",
+      "autoDetect": "\\bany\\b"
+    }
+  ]
+}
