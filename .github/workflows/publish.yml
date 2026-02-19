@@ -19,6 +19,6 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm check-types
       - run: pnpm test
-      - run: pnpm exec vsce publish --pat "$VSCE_PAT" --skip-duplicate
+      - run: pnpm exec vsce publish --no-dependencies --pat "$VSCE_PAT" --skip-duplicate
         env:
           VSCE_PAT: ${{ secrets.VSCE_PAT }}
