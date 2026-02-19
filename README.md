@@ -12,9 +12,6 @@
   <a href="https://marketplace.visualstudio.com/items?itemName=DanielT777.sieve">
     <img src="https://img.shields.io/visual-studio-marketplace/v/DanielT777.sieve?label=VS%20Marketplace&logo=visual-studio-code&color=007ACC" alt="VS Marketplace Version" />
   </a>
-  <a href="https://open-vsx.org/extension/DanielT777/sieve">
-    <img src="https://img.shields.io/open-vsx/v/DanielT777/sieve?label=Open%20VSX&color=C160EF" alt="Open VSX Version" />
-  </a>
   <a href="https://github.com/DanielT777/sieve/blob/main/LICENSE">
     <img src="https://img.shields.io/github/license/DanielT777/sieve?color=green" alt="License: MIT" />
   </a>
@@ -42,7 +39,7 @@ AI assistants modify 10–50+ files in seconds. But then you're left eyeballing 
 2. **Open** a project where AI has made changes
 3. **Click the Sieve icon** in the Activity Bar — done
 
-Or grab the [`.vsix` from the repo](sieve-0.1.0.vsix) and install manually:
+Or grab the [`.vsix` from the latest release](https://github.com/DanielT777/sieve/releases/latest) and install manually:
 ```bash
 code --install-extension sieve-0.1.0.vsix
 ```

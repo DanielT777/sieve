@@ -1,6 +1,6 @@
 {
   "name": "sieve",
-  "displayName": "Sieve",
+  "displayName": "Sieve Review",
   "description": "Filter AI slop before it hits your codebase. A structured human review workflow for AI-generated code.",
   "version": "0.1.0",
   "publisher": "DanielT777",
