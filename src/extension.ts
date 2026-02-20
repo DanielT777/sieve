@@ -11,6 +11,7 @@ import { ExportService } from './export/export.service';
 import { registerCommands } from './commands';
 import { logger } from './shared/logger';
 import { debounce } from './shared/debounce';
+import { ensureSieveExcluded } from './shared/gitignore.guard';
 import type { SieveSession } from './shared/sieve.session';
 
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
@@ -116,6 +117,8 @@ function buildSession(
   const visibilityWatcher = treeView.onDidChangeVisibility(e => {
     if (e.visible) treeProvider.refresh();
   });
+
+  ensureSieveExcluded(workspacePath).catch(() => {});
 
   Promise.all([
     loadTriage(triage, workspacePath),
