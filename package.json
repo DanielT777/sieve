@@ -13,9 +13,20 @@
     "url": "https://github.com/DanielT777/sieve/issues"
   },
   "homepage": "https://github.com/DanielT777/sieve#readme",
-  "extensionDependencies": ["vscode.git"],
-  "keywords": ["ai", "code-review", "diff", "git", "productivity"],
-  "categories": ["Other", "SCM Providers"],
+  "extensionDependencies": [
+    "vscode.git"
+  ],
+  "keywords": [
+    "ai",
+    "code-review",
+    "diff",
+    "git",
+    "productivity"
+  ],
+  "categories": [
+    "Other",
+    "SCM Providers"
+  ],
   "engines": {
     "vscode": "^1.85.0"
   },
@@ -203,7 +214,11 @@
         },
         "sieve.defaultExporter": {
           "type": "string",
-          "enum": ["claude", "generic", "markdown"],
+          "enum": [
+            "claude",
+            "generic",
+            "markdown"
+          ],
           "enumDescriptions": [
             "XML-tagged prompt optimised for Claude (Claude Code, Claude Chat)",
             "Markdown prompt for any LLM (ChatGPT, Copilot Chat, etc.)",
@@ -235,6 +250,7 @@
     "@vscode/vsce": "^3.2.1",
     "esbuild": "^0.24.2",
     "eslint": "^9.17.0",
+    "ovsx": "^0.10.9",
     "prettier": "^3.4.2",
     "typescript": "^5.7.2",
     "typescript-eslint": "^8.18.0",

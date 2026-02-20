@@ -43,6 +43,12 @@ jobs:
         env:
           VSCE_PAT: ${{ secrets.VSCE_PAT }}
 
+      - name: Publish to Open VSX
+        if: steps.version.outputs.changed == 'true'
+        run: pnpm exec ovsx publish --no-dependencies --pat "$OVSX_PAT"
+        env:
+          OVSX_PAT: ${{ secrets.OVSX_PAT }}
+
       - name: Package .vsix
         if: steps.version.outputs.changed == 'true'
         run: pnpm exec vsce package --no-dependencies
