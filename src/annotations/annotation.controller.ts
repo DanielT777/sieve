@@ -98,6 +98,7 @@ export class AnnotationController implements vscode.Disposable {
       body: parsed.body,
       createdAt: Date.now(),
       resolved: false,
+      fileLevel: false,
     };
 
     thread.comments = [this._makeComment(annotation)];
@@ -136,6 +137,7 @@ export class AnnotationController implements vscode.Disposable {
       body,
       createdAt: Date.now(),
       resolved: false,
+      fileLevel: true,
     };
 
     const uri = vscode.Uri.file(fileUri);

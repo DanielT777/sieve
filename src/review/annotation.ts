@@ -14,4 +14,6 @@ export interface Annotation {
   readonly body: string;
   readonly createdAt: number; // Unix timestamp (ms)
   readonly resolved: boolean;
+  /** True for annotations created by flagging a file (no line context in export). */
+  readonly fileLevel?: boolean;
 }

@@ -99,7 +99,7 @@ export class AnnotationStore {
       typeof v.fileUri === 'string' &&
       typeof v.startLine === 'number' &&
       typeof v.endLine === 'number' &&
-      typeof v.category === 'string' &&
+      (v.category === undefined || typeof v.category === 'string') &&
       typeof v.body === 'string' &&
       typeof v.createdAt === 'number' &&
       typeof v.resolved === 'boolean'
