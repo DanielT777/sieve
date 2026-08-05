@@ -12,7 +12,8 @@ export class FileItem extends vscode.TreeItem {
     );
     this.description = STATUS_BADGE[file.status];
     this.iconPath = TRIAGE_ICON[state];
-    this.resourceUri = vscode.Uri.file(file.uri); // enables native git decorations
+    // Native decorations are useful for current changes but misleading for historical diffs.
+    if (!file.source?.targetRef) this.resourceUri = vscode.Uri.file(file.uri);
     this.contextValue = 'file';
     this.command = { command: 'sieve.openDiff', title: 'Open Diff', arguments: [file] };
   }

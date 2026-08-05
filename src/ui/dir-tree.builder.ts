@@ -1,4 +1,5 @@
 import type { ChangedFile } from '../diff/diff.model';
+import { reviewKey } from '../diff/diff.model';
 import type { TriageManager } from '../review/triage.manager';
 import { FolderItem } from './folder.item';
 import { FileItem } from './file.item';
@@ -49,8 +50,9 @@ function treeToItems(tree: DirTree, triage: TriageManager): TreeResult {
     return nameA.localeCompare(nameB);
   });
   for (const file of sortedFiles) {
-    items.push(new FileItem(file, triage.getState(file.uri)));
-    allUris.push(file.uri);
+    const key = reviewKey(file);
+    items.push(new FileItem(file, triage.getState(key)));
+    allUris.push(key);
   }
 
   return { items, uris: allUris };

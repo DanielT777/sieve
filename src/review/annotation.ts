@@ -8,6 +8,8 @@ export type AnnotationCategory = (typeof ANNOTATION_CATEGORIES)[number];
 export interface Annotation {
   readonly id: string;
   readonly fileUri: string;
+  /** Undefined is the legacy/current working-tree source. */
+  readonly sourceId?: string;
   readonly startLine: number;
   readonly endLine: number;
   readonly category?: AnnotationCategory;
@@ -16,4 +18,8 @@ export interface Annotation {
   readonly resolved: boolean;
   /** True for annotations created by flagging a file (no line context in export). */
   readonly fileLevel?: boolean;
+}
+
+export function annotationSourceId(annotation: Annotation): string {
+  return annotation.sourceId ?? 'working-tree';
 }

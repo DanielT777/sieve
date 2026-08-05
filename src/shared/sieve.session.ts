@@ -4,6 +4,7 @@ import type { TriageManager } from '../review/triage.manager';
 import type { AnnotationController } from '../annotations/annotation.controller';
 import type { AnnotationStore } from '../annotations/annotation.store';
 import type { ExportService } from '../export/export.service';
+import type { GitDiffProvider } from '../diff/git-diff.provider';
 
 export interface SieveSession {
   treeView: vscode.TreeView<ReviewDeskItem>;
@@ -12,4 +13,5 @@ export interface SieveSession {
   annotations: AnnotationStore;
   annotationController: AnnotationController;
   exportService: ExportService;
+  diff: GitDiffProvider;
 }

@@ -6,6 +6,7 @@ export const ANNOTATIONS_FILE = `${SIEVE_DIR}/annotations.json`;
 
 export const Commands = {
   refresh: 'sieve.refresh',
+  chooseComparison: 'sieve.chooseComparison',
   markReviewed: 'sieve.markReviewed',
   flag: 'sieve.flag',
   filterByStatus: 'sieve.filterByStatus',

@@ -48,7 +48,7 @@ export class MarkdownExporter implements ReviewExporter {
 
     return (
       `### \`${d.file.relativePath}\`\n\n` +
-      `**Status:** ${d.file.status}\n\n` +
+      `**Status:** ${d.file.status} · **Source:** ${d.file.source?.description ?? 'Current changes'}\n\n` +
       hunks +
       orphanSection
     );

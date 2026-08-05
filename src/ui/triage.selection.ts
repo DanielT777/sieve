@@ -3,6 +3,7 @@ import type { ReviewState } from '../review/triage.enum';
 import type { TriageManager } from '../review/triage.manager';
 import type { ReviewDeskItem } from './review-desk.items';
 import { FileItem } from './file.item';
+import { reviewKey } from '../diff/diff.model';
 
 /**
  * Toggles a triage state on a file.
@@ -18,7 +19,8 @@ export function toggleTriageSelected(
 ): void {
   const target = item instanceof FileItem ? item : treeView.selection[0];
   if (target instanceof FileItem) {
-    const current = triage.getState(target.file.uri);
-    triage.setState(target.file.uri, current === state ? 'unreviewed' : state);
+    const key = reviewKey(target.file);
+    const current = triage.getState(key);
+    triage.setState(key, current === state ? 'unreviewed' : state);
   }
 }

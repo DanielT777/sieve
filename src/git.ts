@@ -37,10 +37,31 @@ export interface Change {
   readonly status: Status;
 }
 
+export interface Ref {
+  readonly name?: string;
+  readonly commit?: string;
+}
+
+export interface UpstreamRef {
+  readonly remote: string;
+  readonly name: string;
+}
+
+export interface Branch extends Ref {
+  readonly upstream?: UpstreamRef;
+}
+
+export interface Remote {
+  readonly name: string;
+}
+
 export interface RepositoryState {
-  readonly HEAD: { readonly name?: string } | undefined;
+  readonly HEAD: Branch | undefined;
+  readonly remotes: Remote[];
   readonly indexChanges: Change[];
   readonly workingTreeChanges: Change[];
+  /** Separate in recent VS Code versions; older versions include these in workingTreeChanges. */
+  readonly untrackedChanges?: Change[];
   readonly mergeChanges: Change[];
   readonly onDidChange: Event<void>;
 }
@@ -50,6 +71,12 @@ export interface Repository {
   readonly state: RepositoryState;
   show(ref: string, filePath: string): Promise<string>;
   diffWithHEAD(path?: string): Promise<string>;
+  diffBetween(ref1: string, ref2: string): Promise<Change[]>;
+  diffBetween(ref1: string, ref2: string, path: string): Promise<string>;
+  getBranchBase(name: string): Promise<Branch | undefined>;
+  getBranches(query: { readonly remote?: boolean }): Promise<Ref[]>;
+  getCommit(ref: string): Promise<{ readonly hash: string }>;
+  getMergeBase(ref1: string, ref2: string): Promise<string | undefined>;
 }
 
 export interface API {
