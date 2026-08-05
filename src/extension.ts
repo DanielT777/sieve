@@ -13,6 +13,7 @@ import { logger } from './shared/logger';
 import { debounce } from './shared/debounce';
 import { ensureSieveExcluded } from './shared/gitignore.guard';
 import type { SieveSession } from './shared/sieve.session';
+import { reviewKey } from './diff/diff.model';
 
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
   const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
@@ -87,12 +88,17 @@ function buildSession(
   const statusBar = new SieveStatusBar();
   const annotationController = new AnnotationController(
     annotations,
-    () => treeProvider.getFileUriSet(),
+    treeProvider,
   );
   const exportService = new ExportService(diff, annotations);
 
-  annotationController.setOnAnnotate(fileUri => {
-    triage.setState(fileUri, 'flagged');
+  annotationController.setOnAnnotate(file => {
+    triage.setState(reviewKey(file), 'flagged');
+  });
+
+  treeProvider.setOnFilesChanged(() => {
+    statusBar.update(triage.computeStats(treeProvider.getFileUris()));
+    annotationController.restore();
   });
 
   const debouncedSave = debounce(() => {
@@ -124,10 +130,8 @@ function buildSession(
     loadTriage(triage, workspacePath),
     annotations.load(),
   ])
-    .then(() => {
-      treeProvider.refresh();
-      statusBar.update(triage.computeStats(treeProvider.getFileUris()));
-      annotationController.restore();
+    .then(async () => {
+      await treeProvider.reload();
     })
     .catch(err => {
       logger.error('Failed to initialise session data', err);
@@ -138,5 +142,5 @@ function buildSession(
     debouncedSave, debouncedGitRefresh,
   );
 
-  return { treeView, treeProvider, triage, annotations, annotationController, exportService };
+  return { treeView, treeProvider, triage, annotations, annotationController, exportService, diff };
 }

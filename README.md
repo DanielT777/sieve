@@ -29,7 +29,7 @@
 
 ---
 
-AI assistants modify 10–50+ files in seconds. But then you're left eyeballing a massive diff, hoping nothing slipped through. **Sieve is a local PR review for AI-generated code** — triage, annotate, and export structured feedback, all without leaving your editor.
+AI assistants modify 10–50+ files in seconds. But then you're left eyeballing a massive diff, hoping nothing slipped through. **Sieve is a local PR review for AI-generated code** — triage, annotate, and copy structured feedback, all without leaving your editor.
 
 ---
 
@@ -41,7 +41,7 @@ AI assistants modify 10–50+ files in seconds. But then you're left eyeballing 
 
 Or grab the [`.vsix` from the latest release](https://github.com/DanielT777/sieve/releases/latest) and install manually:
 ```bash
-code --install-extension sieve-0.1.0.vsix
+code --install-extension sieve-0.1.3.vsix
 ```
 
 > Works with VS Code, Cursor, Windsurf, VSCodium. No configuration needed.
@@ -52,20 +52,24 @@ code --install-extension sieve-0.1.0.vsix
 
 ### Review Desk
 
-All changed files in one panel. Triage them one by one — `Space` to approve, `F` to flag.
+Branch commits and current workspace changes in one panel. Triage them one by one — `R` to approve, `F` to flag.
 
 <p align="center"><img src="assets/screenshots/review-desk.png" alt="Review Desk" width="700" /></p>
 
-- Auto-detects staged + unstaged changes from git
+- Separate `Committed on this branch` and `Current changes` sections
+- Committed changes use the branch merge-base; current changes include staged, unstaged, and untracked files
+- Compare any branches, tags, or commits with `base...target` or `base..target`
 - Tree view grouped by directory with git status badges (A, M, D, R)
 - Filter by status: All / Unreviewed / Reviewed / Flagged
 - Progress in the status bar: `12/47 reviewed`
+
+<p align="center"><img src="assets/screenshots/comparison-picker.png" alt="Choose committed comparison" width="700" /></p>
 
 ---
 
 ### Pre-prompted Annotation Categories
 
-Click the `+` gutter on any changed line. Pick a category — each one generates tailored instructions when you export.
+Click the `+` gutter on any changed line. Pick a category — each one generates tailored instructions when you copy the review.
 
 <p align="center"><img src="assets/screenshots/pre-prompted-cat.png" alt="Annotation categories" width="700" /></p>
 
@@ -83,11 +87,11 @@ Cycle categories with the tag button. Power users can type `[bug] your text` dir
 
 ---
 
-### Export to LLM — Like Reviewing a Friend's PR
+### Copy to LLM — Like Reviewing a Friend's PR
 
-Flag files, add annotations, press `E`. Sieve builds a structured prompt with your diffs + annotations and copies it to your clipboard. Paste it into Claude, ChatGPT, or any LLM — it reads like a thorough code review from a colleague.
+Flag files, add annotations, press `C`. Sieve builds a structured prompt with your diffs + annotations and copies it to your clipboard. Paste it into Claude, ChatGPT, or any LLM — it reads like a thorough code review from a colleague.
 
-<p align="center"><img src="assets/screenshots/export-to-llm.png" alt="Export to LLM" width="700" /></p>
+<p align="center"><img src="assets/screenshots/export-to-llm.png" alt="Copy Review for LLM" width="700" /></p>
 
 Three formats:
 
@@ -97,7 +101,7 @@ Three formats:
 | **Generic LLM** | ChatGPT, Copilot Chat, any LLM |
 | **Markdown Report** | Docs, Slack, Notion |
 
-Each export includes full file content, hunk-level diffs, your annotations matched to the relevant code, and auto-generated instructions based on the categories you used.
+Each copy includes the comparison source, annotated diff hunks, your notes matched to the relevant code, and auto-generated instructions based on the categories you used.
 
 <details>
 <summary>Example output (Claude XML)</summary>
@@ -109,11 +113,7 @@ For each [bug]: identify the root cause and suggest a minimal, targeted fix.
 For each [security]: assess the OWASP risk level and provide a concrete remediation.
 </instructions>
 
-<file path="src/hooks/useAuth.ts" status="modified">
-  <content>
-  1: import { useEffect, useState } from 'react';
-  2: ...
-  </content>
+<file path="src/hooks/useAuth.ts" status="modified" source="origin/main...feature/auth">
   <hunk header="@@ -23,5 +23,7 @@">
     <diff>
 +useEffect(() => {
@@ -137,7 +137,7 @@ For each [security]: assess the OWASP risk level and provide a concrete remediat
 | State | Shortcut | Meaning |
 |---|---|---|
 | &#x2B1C; Unreviewed | — | Not yet looked at |
-| &#x2705; Reviewed | `Space` | Approved |
+| &#x2705; Reviewed | `R` | Approved |
 | &#x1F6A9; Flagged | `F` | Needs attention — prompts for an annotation |
 
 Press the same shortcut again to revert to unreviewed. State persists across restarts.
@@ -153,7 +153,7 @@ Press the same shortcut again to revert to unreviewed. State persists across res
  You review in Sieve ──> Flag + annotate
        ^                       |
        |                       v
- Re-review  <────────  Export to LLM ──> AI fixes issues
+ Re-review  <────────   Copy to LLM  ──> AI fixes issues
 ```
 
 Works with Claude Code, Cursor, Copilot, Cline, Aider, Codex — any tool that writes code.
@@ -166,10 +166,10 @@ Scoped to the Review Desk panel — zero conflicts with your keybindings.
 
 | Key | Action |
 |---|---|
-| `Space` | Toggle reviewed |
+| `R` | Toggle reviewed |
 | `F` | Toggle flagged |
 | `Enter` | Open diff |
-| `E` | Export flagged files |
+| `C` | Copy review for LLM |
 | `F5` | Refresh |
 
 ---

@@ -4,6 +4,9 @@ import type { Annotation, AnnotationCategory } from '../review/annotation';
 import type { AnnotationStore } from './annotation.store';
 import { parseAnnotationBody } from './annotation.parser';
 import { logger } from '../shared/logger';
+import type { ChangedFile } from '../diff/diff.model';
+import type { ReviewDeskProvider } from '../ui/review-desk.provider';
+import { targetDocumentUri } from '../diff/diff.opener';
 
 interface CategoryOption {
   readonly label: string;
@@ -34,25 +37,24 @@ export class AnnotationController implements vscode.Disposable {
   private readonly _pendingCategories = new Map<vscode.CommentThread, AnnotationCategory | undefined>();
   private readonly _threadAnnotationIds = new Map<vscode.CommentThread, string>();
 
-  private _onAnnotate: (fileUri: string) => void = () => {};
+  private _onAnnotate: (file: ChangedFile) => void = () => {};
 
   constructor(
     private readonly _store: AnnotationStore,
-    private readonly _changedFileUris: () => ReadonlySet<string>,
+    private readonly _files: ReviewDeskProvider,
   ) {
     this._controller = vscode.comments.createCommentController('sieve', 'Sieve Annotations');
     this._controller.options = { placeHolder: 'Describe the issue… Use the tag icon (top-right) to set category' };
     this._controller.commentingRangeProvider = {
       provideCommentingRanges: (document: vscode.TextDocument): vscode.Range[] => {
-        if (document.uri.scheme !== 'file') return [];
-        if (!this._changedFileUris().has(document.uri.fsPath)) return [];
+        if (!this._files.getFileForDocument(document.uri)) return [];
         return [new vscode.Range(0, 0, Math.max(0, document.lineCount - 1), 0)];
       },
     };
   }
 
   /** Registers a callback fired whenever an annotation is added to a file. */
-  setOnAnnotate(fn: (fileUri: string) => void): void {
+  setOnAnnotate(fn: (file: ChangedFile) => void): void {
     this._onAnnotate = fn;
   }
 
@@ -83,6 +85,8 @@ export class AnnotationController implements vscode.Disposable {
   submit(reply: vscode.CommentReply): void {
     const { thread, text } = reply;
     if (!thread.range) return;
+    const file = this._files.getFileForDocument(thread.uri);
+    if (!file) return;
 
     const parsed = parseAnnotationBody(text);
     const category = parsed.hasExplicitCategory
@@ -91,7 +95,8 @@ export class AnnotationController implements vscode.Disposable {
 
     const annotation: Annotation = {
       id: this._generateId(),
-      fileUri: thread.uri.fsPath,
+      fileUri: file.uri,
+      sourceId: persistedSourceId(file),
       startLine: thread.range.start.line,
       endLine: thread.range.end.line,
       category,
@@ -112,7 +117,7 @@ export class AnnotationController implements vscode.Disposable {
       logger.error('Failed to save annotation', err);
     });
 
-    this._onAnnotate(annotation.fileUri);
+    this._onAnnotate(file);
   }
 
   /** Deletes an annotation and disposes its thread. */
@@ -127,10 +132,11 @@ export class AnnotationController implements vscode.Disposable {
   }
 
   /** Creates a file-level annotation (line 0) programmatically — used by flag command. */
-  async addFileAnnotation(fileUri: string, body: string, category?: AnnotationCategory): Promise<void> {
+  async addFileAnnotation(file: ChangedFile, body: string, category?: AnnotationCategory): Promise<void> {
     const annotation: Annotation = {
       id: this._generateId(),
-      fileUri,
+      fileUri: file.uri,
+      sourceId: persistedSourceId(file),
       startLine: 0,
       endLine: 0,
       category,
@@ -140,7 +146,7 @@ export class AnnotationController implements vscode.Disposable {
       fileLevel: true,
     };
 
-    const uri = vscode.Uri.file(fileUri);
+    const uri = targetDocumentUri(file);
     const range = new vscode.Range(0, 0, 0, 0);
     const thread = this._controller.createCommentThread(uri, range, [this._makeComment(annotation)]);
     thread.label = annotation.category ?? '';
@@ -148,13 +154,16 @@ export class AnnotationController implements vscode.Disposable {
     this._threadAnnotationIds.set(thread, annotation.id);
 
     await this._store.add(annotation);
-    this._onAnnotate(annotation.fileUri);
+    this._onAnnotate(file);
   }
 
-  /** Restores persisted annotation threads on extension startup. */
+  /** Restores threads that belong to files in the currently displayed comparisons. */
   restore(): void {
+    this.disposeAllThreads();
     for (const annotation of this._store.getAll()) {
-      const uri = vscode.Uri.file(annotation.fileUri);
+      const file = this._files.getFile(annotation.sourceId, annotation.fileUri);
+      if (!file) continue;
+      const uri = targetDocumentUri(file);
       const range = new vscode.Range(annotation.startLine, 0, annotation.endLine, 0);
       const thread = this._controller.createCommentThread(uri, range, [this._makeComment(annotation)]);
       thread.label = annotation.category ?? '';
@@ -189,4 +198,8 @@ export class AnnotationController implements vscode.Disposable {
       author: { name: 'You' },
     };
   }
+}
+
+function persistedSourceId(file: ChangedFile): string | undefined {
+  return file.source?.id === 'working-tree' ? undefined : file.source?.id;
 }

@@ -3,6 +3,16 @@ import type { ReviewState } from '../review/triage.enum';
 /** The status of a file relative to the working tree. */
 export type FileStatus = 'added' | 'modified' | 'deleted' | 'renamed';
 
+/** A Git comparison shown as one section in the Review Desk. */
+export interface DiffSource {
+  readonly id: string;
+  readonly label: string;
+  readonly description: string;
+  readonly baseRef: string;
+  /** Undefined means the working tree. */
+  readonly targetRef: string | undefined;
+}
+
 /** A single line inside a diff hunk. */
 export interface DiffLine {
   readonly type: 'added' | 'removed' | 'context';
@@ -39,6 +49,14 @@ export interface ChangedFile {
   readonly status: FileStatus;
   /** Set only when status === 'renamed'. */
   readonly oldPath: string | undefined;
+  /** Absent only in older persisted/test data; treated as current working-tree changes. */
+  readonly source?: DiffSource;
+}
+
+export function reviewKey(file: ChangedFile): string {
+  return !file.source || file.source.id === 'working-tree'
+    ? file.uri
+    : `${file.source.id}\0${file.uri}`;
 }
 
 /** Full diff for a single file. */

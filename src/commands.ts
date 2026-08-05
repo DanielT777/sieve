@@ -7,6 +7,7 @@ import { toggleTriageSelected } from './ui/triage.selection';
 import { openFileDiff } from './diff/diff.opener';
 import { flagWithAnnotation } from './ui/flag.handler';
 import { clearReview } from './ui/clear.handler';
+import { chooseCommittedComparison } from './ui/comparison.quickpick';
 
 export function registerCommands(
   getSession: () => SieveSession | undefined,
@@ -18,6 +19,7 @@ export function registerCommands(
 
   return [
     vscode.commands.registerCommand(Commands.refresh, withSession(s => s.treeProvider.refresh())),
+    vscode.commands.registerCommand(Commands.chooseComparison, withSession(chooseCommittedComparison)),
     vscode.commands.registerCommand(Commands.markReviewed, (item?: unknown) => {
       const s = getSession();
       if (s) toggleTriageSelected(s.treeView, s.triage, 'reviewed', item);

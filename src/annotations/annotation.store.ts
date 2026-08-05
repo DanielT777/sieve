@@ -3,6 +3,8 @@ import * as path from 'path';
 import type { Annotation, AnnotationCategory } from '../review/annotation';
 import { ANNOTATIONS_FILE } from '../shared/config';
 import { logger } from '../shared/logger';
+import type { ChangedFile } from '../diff/diff.model';
+import { annotationSourceId } from '../review/annotation';
 
 /** Persists annotations to `.sieve/annotations.json`. */
 export class AnnotationStore {
@@ -55,6 +57,11 @@ export class AnnotationStore {
     return this._byFileUri.get(uri) ?? [];
   }
 
+  getForFile(file: ChangedFile): readonly Annotation[] {
+    const sourceId = file.source?.id ?? 'working-tree';
+    return this.getByFileUri(file.uri).filter(a => annotationSourceId(a) === sourceId);
+  }
+
   async remove(id: string): Promise<void> {
     this._annotations = this._annotations.filter(a => a.id !== id);
     this._rebuildIndexes();
@@ -97,6 +104,7 @@ export class AnnotationStore {
     return (
       typeof v.id === 'string' &&
       typeof v.fileUri === 'string' &&
+      (v.sourceId === undefined || typeof v.sourceId === 'string') &&
       typeof v.startLine === 'number' &&
       typeof v.endLine === 'number' &&
       (v.category === undefined || typeof v.category === 'string') &&

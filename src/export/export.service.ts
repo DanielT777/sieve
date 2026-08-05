@@ -1,4 +1,3 @@
-import * as fs from 'fs/promises';
 import * as vscode from 'vscode';
 import type { DiffProvider } from '../diff/diff.provider';
 import type { AnnotationStore } from '../annotations/annotation.store';
@@ -9,6 +8,7 @@ import { GenericLlmExporter } from './generic-llm.exporter';
 import { MarkdownExporter } from './markdown.exporter';
 import { annotationsForHunk, orphanAnnotations, buildContextHunks, trimHunkAroundAnnotations } from './export.utils';
 import { logger } from '../shared/logger';
+import { annotationSourceId } from '../review/annotation';
 
 const EXPORTERS: ReviewExporter[] = [
   new GenericLlmExporter(),
@@ -26,7 +26,7 @@ export class ExportService {
   async run(): Promise<void> {
     const picked = await vscode.window.showQuickPick(
       EXPORTERS.map(e => ({ label: e.label, exporter: e })),
-      { placeHolder: 'Select export format' },
+      { placeHolder: 'Choose a format to copy for your LLM' },
     );
     if (!picked) return;
 
@@ -58,11 +58,11 @@ export class ExportService {
 
     const annotationsByUri = this._indexByUri(allAnnotations);
     const allFiles = await this._diff.getChangedFiles();
-    const annotatedFiles = allFiles.filter(f => annotationsByUri.has(f.uri));
+    const annotatedFiles = allFiles.filter(f => annotationsByUri.has(sourcePathKey(f.source?.id, f.uri)));
 
     return Promise.all(
       annotatedFiles.map(async file => {
-        const fileAnnotations = annotationsByUri.get(file.uri) ?? [];
+        const fileAnnotations = annotationsByUri.get(sourcePathKey(file.source?.id, file.uri)) ?? [];
         const hasLineAnnotations = fileAnnotations.some(a => !a.fileLevel);
 
         // File-level only (e.g. flagged file) → no diff needed, just path + annotations.
@@ -77,7 +77,7 @@ export class ExportService {
         const orphans = orphanAnnotations(fileDiff.hunks, fileAnnotations);
         const lineOrphans = orphans.filter(a => !a.fileLevel);
         if (lineOrphans.length > 0) {
-          const content = await fs.readFile(file.uri, 'utf-8');
+          const content = await this._diff.getFileContent(file);
           const contextHunks = buildContextHunks(file.uri, content.split('\n'), lineOrphans);
           const mergedHunks = [...fileDiff.hunks, ...contextHunks].sort((a, b) => a.newStart - b.newStart);
           fileDiff = { ...fileDiff, hunks: mergedHunks };
@@ -100,10 +100,15 @@ export class ExportService {
   private _indexByUri(annotations: readonly Annotation[]): Map<string, Annotation[]> {
     const index = new Map<string, Annotation[]>();
     for (const a of annotations) {
-      const list = index.get(a.fileUri) ?? [];
+      const key = sourcePathKey(annotationSourceId(a), a.fileUri);
+      const list = index.get(key) ?? [];
       list.push(a);
-      index.set(a.fileUri, list);
+      index.set(key, list);
     }
     return index;
   }
+}
+
+function sourcePathKey(sourceId: string | undefined, fileUri: string): string {
+  return `${sourceId ?? 'working-tree'}\0${fileUri}`;
 }

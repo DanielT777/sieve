@@ -2,14 +2,14 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 import type { ChangedFile } from './diff.model';
 
-/** Opens a VS Code diff view: HEAD (left) vs working tree (right). */
+/** Opens the exact comparison represented by a Review Desk file. */
 export async function openFileDiff(file: ChangedFile): Promise<void> {
-  const workingTreeUri = vscode.Uri.file(file.uri);
+  const baseRef = file.source?.baseRef ?? 'HEAD';
+  const targetUri = targetDocumentUri(file);
   const filename = path.basename(file.uri);
 
   if (file.status === 'added') {
-    // New file — open directly; no HEAD version to diff against.
-    await vscode.window.showTextDocument(workingTreeUri);
+    await vscode.window.showTextDocument(targetUri);
     return;
   }
 
@@ -17,23 +17,28 @@ export async function openFileDiff(file: ChangedFile): Promise<void> {
     // Diff old file (left) vs empty (right) — all lines appear as deletions.
     await vscode.commands.executeCommand(
       'vscode.diff',
-      toGitUri(file.uri, 'HEAD'),
+      toGitUri(file.oldPath ?? file.uri, baseRef),
       emptyFileUri(file.uri),
       `${filename} (Deleted)`,
     );
     return;
   }
 
-  // modified / renamed: real diff view
   await vscode.commands.executeCommand(
     'vscode.diff',
-    toGitUri(file.uri, 'HEAD'),
-    workingTreeUri,
-    `${filename} (HEAD ↔ Working Tree)`,
+    toGitUri(file.oldPath ?? file.uri, baseRef),
+    targetUri,
+    `${filename} (${file.source?.description ?? 'HEAD ↔ working tree'})`,
   );
 }
 
-function toGitUri(fsPath: string, ref: string): vscode.Uri {
+export function targetDocumentUri(file: ChangedFile): vscode.Uri {
+  return file.source?.targetRef
+    ? toGitUri(file.uri, file.source.targetRef)
+    : vscode.Uri.file(file.uri);
+}
+
+export function toGitUri(fsPath: string, ref: string): vscode.Uri {
   return vscode.Uri.from({
     scheme: 'git',
     path: fsPath,

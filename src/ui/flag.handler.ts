@@ -3,6 +3,7 @@ import type { SieveSession } from '../shared/sieve.session';
 import type { AnnotationCategory } from '../review/annotation';
 import { FileItem } from './file.item';
 import { logger } from '../shared/logger';
+import { reviewKey } from '../diff/diff.model';
 
 interface CategoryOption {
   readonly label: string;
@@ -32,20 +33,20 @@ export async function flagWithAnnotation(session: SieveSession, item?: unknown):
   const target = item instanceof FileItem ? item : session.treeView.selection[0];
   if (!(target instanceof FileItem)) return;
 
-  const fileUri = target.file.uri;
-  const current = session.triage.getState(fileUri);
+  const key = reviewKey(target.file);
+  const current = session.triage.getState(key);
 
   // Unflagging — just revert to unreviewed
   if (current === 'flagged') {
-    session.triage.setState(fileUri, 'unreviewed');
+    session.triage.setState(key, 'unreviewed');
     return;
   }
 
   // Flagging — set state first
-  session.triage.setState(fileUri, 'flagged');
+  session.triage.setState(key, 'flagged');
 
   // If file already has annotations, no need to prompt
-  const existing = session.annotations.getByFileUri(fileUri);
+  const existing = session.annotations.getForFile(target.file);
   if (existing.length > 0) return;
 
   // Prompt for a reason
@@ -61,7 +62,7 @@ export async function flagWithAnnotation(session: SieveSession, item?: unknown):
   // Cancel or "None" both result in no category — annotation is still created
   const category = picked?.value;
 
-  await session.annotationController.addFileAnnotation(fileUri, body, category).catch(err => {
+  await session.annotationController.addFileAnnotation(target.file, body, category).catch(err => {
     logger.error('Failed to create flag annotation', err);
   });
 }

@@ -1,12 +1,15 @@
 import * as vscode from 'vscode';
 import type { DiffProvider } from '../diff/diff.provider';
 import type { ChangedFile } from '../diff/diff.model';
+import { reviewKey } from '../diff/diff.model';
 import type { ReviewState } from '../review/triage.enum';
 import type { TriageManager } from '../review/triage.manager';
 import { FolderItem } from './folder.item';
 import { FileItem } from './file.item';
 import { MessageItem } from './message.item';
+import { SourceItem } from './source.item';
 import { buildReviewTree } from './dir-tree.builder';
+import { targetDocumentUri } from '../diff/diff.opener';
 import type { ReviewDeskItem } from './review-desk.items';
 
 export type { ReviewDeskItem };
@@ -20,9 +23,11 @@ export class ReviewDeskProvider
 
   private _currentFiles: readonly ChangedFile[] = [];
   private _fileUriCache: readonly string[] = [];
-  private _fileUriSet: ReadonlySet<string> = new Set();
+  private _filesByDocument = new Map<string, ChangedFile>();
+  private _filesBySourceAndPath = new Map<string, ChangedFile>();
   private _gitDirty = true;
   private _filter: ReviewState | 'all' = 'all';
+  private _onFilesChanged: () => void = () => {};
 
   constructor(
     private readonly _diff: DiffProvider,
@@ -32,6 +37,24 @@ export class ReviewDeskProvider
   /** Full refresh — re-fetches git state and rebuilds tree. */
   refresh(): void {
     this._gitDirty = true;
+    this._onDidChangeTreeData.fire();
+  }
+
+  setOnFilesChanged(fn: () => void): void {
+    this._onFilesChanged = fn;
+  }
+
+  async reload(): Promise<void> {
+    this._currentFiles = await this._diff.getChangedFiles();
+    this._fileUriCache = this._currentFiles.map(reviewKey);
+    this._filesByDocument = new Map(
+      this._currentFiles.map(file => [targetDocumentUri(file).toString(), file]),
+    );
+    this._filesBySourceAndPath = new Map(
+      this._currentFiles.map(file => [sourcePathKey(file.source?.id, file.uri), file]),
+    );
+    this._gitDirty = false;
+    this._onFilesChanged();
     this._onDidChangeTreeData.fire();
   }
 
@@ -50,9 +73,12 @@ export class ReviewDeskProvider
     return this._fileUriCache;
   }
 
-  /** Returns URIs as a Set for O(1) membership checks. */
-  getFileUriSet(): ReadonlySet<string> {
-    return this._fileUriSet;
+  getFileForDocument(uri: vscode.Uri): ChangedFile | undefined {
+    return this._filesByDocument.get(uri.toString());
+  }
+
+  getFile(sourceId: string | undefined, fileUri: string): ChangedFile | undefined {
+    return this._filesBySourceAndPath.get(sourcePathKey(sourceId, fileUri));
   }
 
   getTreeItem(element: ReviewDeskItem): vscode.TreeItem {
@@ -60,29 +86,34 @@ export class ReviewDeskProvider
   }
 
   async getChildren(element?: ReviewDeskItem): Promise<ReviewDeskItem[]> {
+    if (element instanceof SourceItem) return element.children;
     if (element instanceof FolderItem) return element.children;
     if (element instanceof FileItem) return [];
 
     // Root call: reload git state only when dirty, then apply filter and build tree.
     if (this._gitDirty) {
-      this._currentFiles = await this._diff.getChangedFiles();
-      this._fileUriCache = this._currentFiles.map(f => f.uri);
-      this._fileUriSet = new Set(this._fileUriCache);
-      this._gitDirty = false;
+      await this.reload();
     }
 
-    if (this._currentFiles.length === 0) return []; // let viewsWelcome show
-
-    let files: readonly ChangedFile[] = this._currentFiles;
-    if (this._filter !== 'all') {
-      files = files.filter(f => this._triage.getState(f.uri) === this._filter);
-      if (files.length === 0) return [new MessageItem('No files match the current filter')];
-    }
-
-    return buildReviewTree(files, this._triage);
+    return this._diff.getSources().map(source => {
+      const sourceFiles = this._currentFiles.filter(file => file.source?.id === source.id);
+      const files = this._filter === 'all'
+        ? sourceFiles
+        : sourceFiles.filter(file => this._triage.getState(reviewKey(file)) === this._filter);
+      const children = files.length > 0
+        ? buildReviewTree(files, this._triage)
+        : [new MessageItem(
+            sourceFiles.length > 0 ? 'No files match the current filter' : 'No changes',
+          )];
+      return new SourceItem(source, children, sourceFiles.length);
+    });
   }
 
   dispose(): void {
     this._onDidChangeTreeData.dispose();
   }
+}
+
+function sourcePathKey(sourceId: string | undefined, fileUri: string): string {
+  return `${sourceId ?? 'working-tree'}\0${fileUri}`;
 }

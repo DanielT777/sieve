@@ -2,7 +2,7 @@
   "name": "sieve",
   "displayName": "Sieve Review",
   "description": "Filter AI slop before it hits your codebase. A structured human review workflow for AI-generated code.",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "publisher": "DanielT777",
   "license": "MIT",
   "repository": {
@@ -69,6 +69,12 @@
         "icon": "$(refresh)"
       },
       {
+        "command": "sieve.chooseComparison",
+        "title": "Choose Committed Comparison",
+        "category": "Sieve",
+        "icon": "$(git-compare)"
+      },
+      {
         "command": "sieve.markReviewed",
         "title": "Mark as Reviewed",
         "category": "Sieve",
@@ -99,9 +105,9 @@
       },
       {
         "command": "sieve.export",
-        "title": "Export Review",
+        "title": "Copy Review for LLM",
         "category": "Sieve",
-        "icon": "$(export)"
+        "icon": "$(copy)"
       },
       {
         "command": "sieve.filterByStatus",
@@ -124,24 +130,29 @@
     "menus": {
       "view/title": [
         {
-          "command": "sieve.refresh",
+          "command": "sieve.chooseComparison",
           "when": "view == sieve.reviewDesk",
           "group": "navigation@1"
         },
         {
-          "command": "sieve.export",
+          "command": "sieve.refresh",
           "when": "view == sieve.reviewDesk",
           "group": "navigation@2"
         },
         {
-          "command": "sieve.filterByStatus",
+          "command": "sieve.export",
           "when": "view == sieve.reviewDesk",
           "group": "navigation@3"
         },
         {
-          "command": "sieve.clearReview",
+          "command": "sieve.filterByStatus",
           "when": "view == sieve.reviewDesk",
           "group": "navigation@4"
+        },
+        {
+          "command": "sieve.clearReview",
+          "when": "view == sieve.reviewDesk",
+          "group": "2_manage@1"
         }
       ],
       "view/item/context": [
@@ -179,28 +190,28 @@
     "keybindings": [
       {
         "command": "sieve.markReviewed",
-        "key": "space",
-        "when": "focusedView == sieve.reviewDesk"
+        "key": "r",
+        "when": "focusedView == sieve.reviewDesk && listFocus"
       },
       {
         "command": "sieve.flag",
         "key": "f",
-        "when": "focusedView == sieve.reviewDesk"
+        "when": "focusedView == sieve.reviewDesk && listFocus"
       },
       {
         "command": "sieve.export",
-        "key": "e",
-        "when": "focusedView == sieve.reviewDesk"
+        "key": "c",
+        "when": "focusedView == sieve.reviewDesk && listFocus"
       },
       {
         "command": "sieve.openDiff",
         "key": "enter",
-        "when": "focusedView == sieve.reviewDesk"
+        "when": "focusedView == sieve.reviewDesk && listFocus"
       },
       {
         "command": "sieve.refresh",
         "key": "f5",
-        "when": "focusedView == sieve.reviewDesk"
+        "when": "focusedView == sieve.reviewDesk && listFocus"
       }
     ],
     "configuration": {
@@ -225,7 +236,7 @@
             "Clean markdown report for documentation or sharing"
           ],
           "default": "generic",
-          "description": "Default export format when using the Export Review command.",
+          "description": "Default format when using the Copy Review for LLM command.",
           "scope": "resource"
         }
       }

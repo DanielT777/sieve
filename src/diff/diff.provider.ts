@@ -1,4 +1,4 @@
-import type { ChangedFile, FileDiff } from './diff.model';
+import type { ChangedFile, DiffSource, FileDiff } from './diff.model';
 import type { Disposable } from '../shared/disposable';
 
 /**
@@ -8,6 +8,8 @@ import type { Disposable } from '../shared/disposable';
 export interface DiffProvider {
   getChangedFiles(): Promise<readonly ChangedFile[]>;
   getDiff(file: ChangedFile): Promise<FileDiff>;
+  getFileContent(file: ChangedFile): Promise<string>;
+  getSources(): readonly DiffSource[];
   /** Returns a handle whose dispose() stops watching. */
   watchChanges(callback: () => void): Disposable;
 }

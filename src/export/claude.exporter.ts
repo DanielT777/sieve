@@ -54,7 +54,7 @@ export class ClaudeExporter implements ReviewExporter {
       : '';
 
     return (
-      `<file path="${escapeXml(d.file.relativePath)}" status="${d.file.status}">\n` +
+      `<file path="${escapeXml(d.file.relativePath)}" status="${d.file.status}" source="${escapeXml(d.file.source?.description ?? 'Current changes')}">\n` +
       hunks +
       orphanXml +
       `\n</file>`

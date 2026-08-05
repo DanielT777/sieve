@@ -43,6 +43,7 @@ export class GenericLlmExporter implements ReviewExporter {
 
     return (
       `## \`${d.file.relativePath}\` (${d.file.status})\n\n` +
+      `**Source:** ${d.file.source?.description ?? 'Current changes'}\n\n` +
       hunks +
       orphanSection
     );
