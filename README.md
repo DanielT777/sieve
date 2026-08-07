@@ -41,7 +41,7 @@ AI assistants modify 10–50+ files in seconds. But then you're left eyeballing 
 
 Or grab the [`.vsix` from the latest release](https://github.com/DanielT777/sieve/releases/latest) and install manually:
 ```bash
-code --install-extension sieve-0.1.3.vsix
+code --install-extension sieve-0.1.4.vsix
 ```
 
 > Works with VS Code, Cursor, Windsurf, VSCodium. No configuration needed.
@@ -132,6 +132,14 @@ For each [security]: assess the OWASP risk level and provide a concrete remediat
 
 ---
 
+### Let Your Agent Pick Up the Review
+
+Run **Sieve: Install Agent Skill** from the Command Palette and choose Claude Code, Codex, or both. After that, ask your agent to address your latest review: the Sieve skill is selected automatically, finds the annotations for the current workspace, and works through them without an export or paste step.
+
+The skill is read-only: it can fix your code, but only you resolve or delete annotations in Sieve.
+
+---
+
 ### 3-State Triage
 
 | State | Shortcut | Meaning |
@@ -179,6 +187,7 @@ Scoped to the Review Desk panel — zero conflicts with your keybindings.
 - **Zero cloud** — everything runs locally
 - **Zero telemetry** — no data collection
 - **Zero network** — no outbound connections
+- **Clean repositories** — new review state lives under `~/.sieve/workspaces`; Sieve no longer writes project or Git metadata
 
 ---
 

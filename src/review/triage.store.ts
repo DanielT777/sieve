@@ -16,23 +16,23 @@ function isValidTriageData(data: unknown): data is Record<string, ReviewState> {
   return Object.values(data).every(isValidReviewState);
 }
 
-/** Persists the current triage state to `.sieve/triage.json`. */
+/** Persists the current triage state in Sieve's user-level workspace storage. */
 export async function saveTriage(
   triage: TriageManager,
-  workspacePath: string,
+  storagePath: string,
 ): Promise<void> {
-  const filePath = path.join(workspacePath, TRIAGE_FILE);
+  const filePath = path.join(storagePath, TRIAGE_FILE);
   await fs.mkdir(path.dirname(filePath), { recursive: true });
   await fs.writeFile(filePath, JSON.stringify(triage.toJSON(), null, 2), 'utf-8');
 }
 
-/** Loads triage state from `.sieve/triage.json` into the manager. No-op if file absent. */
+/** Loads triage state from user-level workspace storage. No-op if absent. */
 export async function loadTriage(
   triage: TriageManager,
-  workspacePath: string,
+  storagePath: string,
 ): Promise<void> {
   try {
-    const filePath = path.join(workspacePath, TRIAGE_FILE);
+    const filePath = path.join(storagePath, TRIAGE_FILE);
     const raw = await fs.readFile(filePath, 'utf-8');
     const parsed: unknown = JSON.parse(raw);
 

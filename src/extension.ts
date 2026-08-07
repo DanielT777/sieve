@@ -11,18 +11,18 @@ import { ExportService } from './export/export.service';
 import { registerCommands } from './commands';
 import { logger } from './shared/logger';
 import { debounce } from './shared/debounce';
-import { ensureSieveExcluded } from './shared/gitignore.guard';
 import type { SieveSession } from './shared/sieve.session';
 import { reviewKey } from './diff/diff.model';
+import { prepareWorkspaceStorage, workspaceStoragePath } from './shared/workspace-storage';
 
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
+  let session: SieveSession | undefined;
+  context.subscriptions.push(...registerCommands(context, () => session));
+  context.subscriptions.push({ dispose: () => logger.dispose() });
+
   const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
   if (!workspaceFolder) return;
   const workspacePath = workspaceFolder.uri.fsPath;
-
-  let session: SieveSession | undefined;
-  context.subscriptions.push(...registerCommands(() => session));
-  context.subscriptions.push({ dispose: () => logger.dispose() });
 
   const gitExtension = vscode.extensions.getExtension<GitExtension>('vscode.git');
   if (!gitExtension) {
@@ -81,9 +81,10 @@ function buildSession(
   workspacePath: string,
   repo: Repository,
 ): SieveSession {
+  const storagePath = workspaceStoragePath(workspacePath);
   const diff = new GitDiffProvider(repo);
   const triage = new TriageManager();
-  const annotations = new AnnotationStore(workspacePath);
+  const annotations = new AnnotationStore(storagePath);
   const treeProvider = new ReviewDeskProvider(diff, triage);
   const statusBar = new SieveStatusBar();
   const annotationController = new AnnotationController(
@@ -102,7 +103,7 @@ function buildSession(
   });
 
   const debouncedSave = debounce(() => {
-    saveTriage(triage, workspacePath).catch(err => {
+    saveTriage(triage, storagePath).catch(err => {
       logger.error('Failed to save triage state', err);
     });
   }, 300);
@@ -124,12 +125,11 @@ function buildSession(
     if (e.visible) treeProvider.refresh();
   });
 
-  ensureSieveExcluded(workspacePath).catch(() => {});
-
-  Promise.all([
-    loadTriage(triage, workspacePath),
-    annotations.load(),
-  ])
+  prepareWorkspaceStorage(workspacePath, storagePath)
+    .then(() => Promise.all([
+      loadTriage(triage, storagePath),
+      annotations.load(),
+    ]))
     .then(async () => {
       await treeProvider.reload();
     })

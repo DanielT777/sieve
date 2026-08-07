@@ -1,0 +1,7 @@
+interface:
+  display_name: "Sieve Review"
+  short_description: "Address the latest Sieve review feedback"
+  default_prompt: "Use $address-sieve-review to address the latest Sieve annotations in this workspace."
+
+policy:
+  allow_implicit_invocation: true

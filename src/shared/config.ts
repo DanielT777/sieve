@@ -1,8 +1,9 @@
 /** Centralized constants — all magic strings live here. */
 
 export const SIEVE_DIR = '.sieve';
-export const TRIAGE_FILE = `${SIEVE_DIR}/triage.json`;
-export const ANNOTATIONS_FILE = `${SIEVE_DIR}/annotations.json`;
+export const TRIAGE_FILE = 'triage.json';
+export const ANNOTATIONS_FILE = 'annotations.json';
+export const WORKSPACE_FILE = 'workspace.json';
 
 export const Commands = {
   refresh: 'sieve.refresh',
@@ -16,4 +17,5 @@ export const Commands = {
   cycleCategory: 'sieve.cycleCategory',
   deleteAnnotation: 'sieve.deleteAnnotation',
   clearReview: 'sieve.clearReview',
+  installAgentSkill: 'sieve.installAgentSkill',
 } as const;
