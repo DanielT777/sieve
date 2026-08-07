@@ -8,8 +8,10 @@ import { openFileDiff } from './diff/diff.opener';
 import { flagWithAnnotation } from './ui/flag.handler';
 import { clearReview } from './ui/clear.handler';
 import { chooseCommittedComparison } from './ui/comparison.quickpick';
+import { installAgentSkill } from './agent/skill.installer';
 
 export function registerCommands(
+  context: vscode.ExtensionContext,
   getSession: () => SieveSession | undefined,
 ): vscode.Disposable[] {
   const withSession = (fn: (s: SieveSession) => void | Promise<void>) => () => {
@@ -46,6 +48,7 @@ export function registerCommands(
       if (s) void s.annotationController.deleteAnnotation(thread);
     }),
     vscode.commands.registerCommand(Commands.clearReview, withSession(s => clearReview(s))),
+    vscode.commands.registerCommand(Commands.installAgentSkill, () => installAgentSkill(context)),
   ];
 }
 

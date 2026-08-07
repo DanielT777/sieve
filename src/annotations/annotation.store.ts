@@ -6,7 +6,7 @@ import { logger } from '../shared/logger';
 import type { ChangedFile } from '../diff/diff.model';
 import { annotationSourceId } from '../review/annotation';
 
-/** Persists annotations to `.sieve/annotations.json`. */
+/** Persists annotations in Sieve's user-level workspace storage. */
 export class AnnotationStore {
   private _annotations: Annotation[] = [];
   private readonly _filePath: string;
@@ -14,8 +14,8 @@ export class AnnotationStore {
   private _byId = new Map<string, Annotation>();
   private _byFileUri = new Map<string, Annotation[]>();
 
-  constructor(workspacePath: string) {
-    this._filePath = path.join(workspacePath, ANNOTATIONS_FILE);
+  constructor(storagePath: string) {
+    this._filePath = path.join(storagePath, ANNOTATIONS_FILE);
   }
 
   async load(): Promise<readonly Annotation[]> {
