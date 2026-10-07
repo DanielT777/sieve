@@ -1,10 +1,12 @@
 import * as vscode from 'vscode';
 import type { DiffSource } from '../diff/diff.model';
+import type { ReviewRepository } from '../review/review.repository';
 import type { ReviewDeskItem } from './review-desk.items';
 
 export class SourceItem extends vscode.TreeItem {
   constructor(
     readonly source: DiffSource,
+    readonly repository: ReviewRepository,
     readonly children: ReviewDeskItem[],
     fileCount: number,
   ) {
@@ -13,6 +15,7 @@ export class SourceItem extends vscode.TreeItem {
       ? `${fileCount} · ${source.description}`
       : source.description;
     this.iconPath = new vscode.ThemeIcon('git-compare');
-    this.contextValue = 'source';
+    // The working tree has no target ref; every other section is a committed comparison.
+    this.contextValue = source.targetRef === undefined ? 'source' : 'committedSource';
   }
 }

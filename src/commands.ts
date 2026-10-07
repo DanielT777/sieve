@@ -7,21 +7,23 @@ import { toggleTriageSelected } from './ui/triage.selection';
 import { openFileDiff } from './diff/diff.opener';
 import { flagWithAnnotation } from './ui/flag.handler';
 import { clearReview } from './ui/clear.handler';
-import { chooseCommittedComparison } from './ui/comparison.quickpick';
+import { changeComparisonBase, changeComparisonTarget, chooseCommittedComparison } from './ui/comparison.quickpick';
 import { installAgentSkill } from './agent/skill.installer';
 
 export function registerCommands(
   context: vscode.ExtensionContext,
   getSession: () => SieveSession | undefined,
 ): vscode.Disposable[] {
-  const withSession = (fn: (s: SieveSession) => void | Promise<void>) => () => {
+  const withSession = (fn: (s: SieveSession, item?: unknown) => void | Promise<void>) => (item?: unknown) => {
     const s = getSession();
-    if (s) void fn(s);
+    if (s) void fn(s, item);
   };
 
   return [
     vscode.commands.registerCommand(Commands.refresh, withSession(s => s.treeProvider.refresh())),
     vscode.commands.registerCommand(Commands.chooseComparison, withSession(chooseCommittedComparison)),
+    vscode.commands.registerCommand(Commands.changeComparisonBase, withSession(changeComparisonBase)),
+    vscode.commands.registerCommand(Commands.changeComparisonTarget, withSession(changeComparisonTarget)),
     vscode.commands.registerCommand(Commands.markReviewed, (item?: unknown) => {
       const s = getSession();
       if (s) toggleTriageSelected(s.treeView, 'reviewed', item);

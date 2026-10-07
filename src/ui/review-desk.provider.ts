@@ -141,17 +141,16 @@ export class ReviewDeskProvider
 
   private _sourceItems(repository: ReviewRepository): SourceItem[] {
     const repositoryFiles = this._filesByRepository.get(repository) ?? [];
+    const isVisible = (file: ChangedFile): boolean =>
+      this._filter === 'all' || repository.triage.getState(reviewKey(file)) === this._filter;
     return repository.diff.getSources().map(source => {
       const sourceFiles = repositoryFiles.filter(file => file.source?.id === source.id);
-      const files = this._filter === 'all'
-        ? sourceFiles
-        : sourceFiles.filter(file => repository.triage.getState(reviewKey(file)) === this._filter);
-      const children = files.length > 0
-        ? buildReviewTree(files, repository)
+      const children = sourceFiles.some(isVisible)
+        ? buildReviewTree(sourceFiles, repository, isVisible)
         : [new MessageItem(
             sourceFiles.length > 0 ? 'No files match the current filter' : 'No changes',
           )];
-      return new SourceItem(source, children, sourceFiles.length);
+      return new SourceItem(source, repository, children, sourceFiles.length);
     });
   }
 }
