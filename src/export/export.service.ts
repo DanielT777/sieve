@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
-import type { DiffProvider } from '../diff/diff.provider';
-import type { AnnotationStore } from '../annotations/annotation.store';
+import type { ReviewRepository } from '../review/review.repository';
+import { uniqueRepositoryNames } from '../review/repository.names';
 import type { ReviewExporter, ExportFileData } from './review.exporter';
 import type { Annotation } from '../review/annotation';
 import { ClaudeExporter } from './claude.exporter';
@@ -18,10 +18,7 @@ const EXPORTERS: ReviewExporter[] = [
 
 /** Orchestrates the export flow: format selection → build payload → clipboard. */
 export class ExportService {
-  constructor(
-    private readonly _diff: DiffProvider,
-    private readonly _annotations: AnnotationStore,
-  ) {}
+  constructor(private readonly _repositories: () => readonly ReviewRepository[]) {}
 
   async run(): Promise<void> {
     const picked = await vscode.window.showQuickPick(
@@ -30,8 +27,14 @@ export class ExportService {
     );
     if (!picked) return;
 
+    const repositories = await this._pickRepositories();
+    if (!repositories) return;
+
     try {
-      const payload = await this._buildPayload();
+      const prefixes = repositories.length > 1 ? uniqueRepositoryNames(repositories) : [];
+      const payload = (await Promise.all(
+        repositories.map((repository, index) => this._buildPayload(repository, prefixes[index])),
+      )).flat();
 
       if (payload.length === 0) {
         void vscode.window.showInformationMessage(
@@ -51,16 +54,44 @@ export class ExportService {
     }
   }
 
-  /** Builds the payload: only files that have annotations, with hunks only (no full file). */
-  private async _buildPayload(): Promise<readonly ExportFileData[]> {
-    const allAnnotations = this._annotations.getAll();
+  /** Asks which repository to copy when more than one has annotations. */
+  private async _pickRepositories(): Promise<readonly ReviewRepository[] | undefined> {
+    const annotated = this._repositories().filter(repository => repository.annotations.getAll().length > 0);
+    if (annotated.length <= 1) return annotated;
+
+    const picked = await vscode.window.showQuickPick([
+      ...annotated.map(repository => ({
+        label: repository.label,
+        description: `${repository.annotations.getAll().length} annotation(s)`,
+        detail: repository.root,
+        repositories: [repository],
+      })),
+      {
+        label: 'All repositories',
+        description: 'Paths are prefixed with the repository name',
+        repositories: annotated,
+      },
+    ], { placeHolder: 'Copy the review of which repository?' });
+    return picked?.repositories;
+  }
+
+  /**
+   * Builds one repository's payload: only files that have annotations, with
+   * hunks only (no full file). When several repositories are copied together,
+   * paths get a prefix naming the repository.
+   */
+  private async _buildPayload(
+    repository: ReviewRepository,
+    pathPrefix: string | undefined,
+  ): Promise<readonly ExportFileData[]> {
+    const allAnnotations = repository.annotations.getAll();
     if (allAnnotations.length === 0) return [];
 
     const annotationsByUri = this._indexByUri(allAnnotations);
-    const allFiles = await this._diff.getChangedFiles();
+    const allFiles = await repository.diff.getChangedFiles();
     const annotatedFiles = allFiles.filter(f => annotationsByUri.has(sourcePathKey(f.source?.id, f.uri)));
 
-    return Promise.all(
+    const payload = await Promise.all(
       annotatedFiles.map(async file => {
         const fileAnnotations = annotationsByUri.get(sourcePathKey(file.source?.id, file.uri)) ?? [];
         const hasLineAnnotations = fileAnnotations.some(a => !a.fileLevel);
@@ -71,13 +102,13 @@ export class ExportService {
           return { file, fileDiff: emptyDiff, annotations: fileAnnotations };
         }
 
-        let fileDiff = await this._diff.getDiff(file);
+        let fileDiff = await repository.diff.getDiff(file);
 
         // Generate context-only hunks for annotations on unchanged lines.
         const orphans = orphanAnnotations(fileDiff.hunks, fileAnnotations);
         const lineOrphans = orphans.filter(a => !a.fileLevel);
         if (lineOrphans.length > 0) {
-          const content = await this._diff.getFileContent(file);
+          const content = await repository.diff.getFileContent(file);
           const contextHunks = buildContextHunks(file.uri, content.split('\n'), lineOrphans);
           const mergedHunks = [...fileDiff.hunks, ...contextHunks].sort((a, b) => a.newStart - b.newStart);
           fileDiff = { ...fileDiff, hunks: mergedHunks };
@@ -95,6 +126,12 @@ export class ExportService {
         return { file, fileDiff, annotations: fileAnnotations };
       }),
     );
+    if (pathPrefix === undefined) return payload;
+
+    return payload.map(data => {
+      const file = { ...data.file, relativePath: `${pathPrefix}/${data.file.relativePath}` };
+      return { ...data, file, fileDiff: { ...data.fileDiff, file } };
+    });
   }
 
   private _indexByUri(annotations: readonly Annotation[]): Map<string, Annotation[]> {

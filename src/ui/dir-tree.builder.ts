@@ -1,6 +1,6 @@
 import type { ChangedFile } from '../diff/diff.model';
 import { reviewKey } from '../diff/diff.model';
-import type { TriageManager } from '../review/triage.manager';
+import type { ReviewRepository } from '../review/review.repository';
 import { FolderItem } from './folder.item';
 import { FileItem } from './file.item';
 
@@ -35,15 +35,16 @@ function buildDirTree(files: readonly ChangedFile[]): DirTree {
 
 function treeToItems(
   tree: DirTree,
-  triage: TriageManager,
+  repository: ReviewRepository,
   isVisible: (file: ChangedFile) => boolean,
 ): TreeResult {
+  const { triage } = repository;
   const items: (FolderItem | FileItem)[] = [];
   const allUris: string[] = [];
 
   const sortedDirs = [...tree.dirs.entries()].sort(([a], [b]) => a.localeCompare(b));
   for (const [name, subtree] of sortedDirs) {
-    const result = treeToItems(subtree, triage, isVisible);
+    const result = treeToItems(subtree, repository, isVisible);
     allUris.push(...result.uris);
     if (result.items.length === 0) continue;
     items.push(new FolderItem(
@@ -61,7 +62,7 @@ function treeToItems(
   });
   for (const file of sortedFiles) {
     const key = reviewKey(file);
-    if (isVisible(file)) items.push(new FileItem(file, triage.getState(key)));
+    if (isVisible(file)) items.push(new FileItem(file, repository, triage.getState(key)));
     allUris.push(key);
   }
 
@@ -75,8 +76,8 @@ function treeToItems(
  */
 export function buildReviewTree(
   files: readonly ChangedFile[],
-  triage: TriageManager,
+  repository: ReviewRepository,
   isVisible: (file: ChangedFile) => boolean = () => true,
 ): (FolderItem | FileItem)[] {
-  return treeToItems(buildDirTree(files), triage, isVisible).items;
+  return treeToItems(buildDirTree(files), repository, isVisible).items;
 }

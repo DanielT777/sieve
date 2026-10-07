@@ -13,17 +13,23 @@ export function workspaceStoragePath(
   return path.join(sieveHome, 'workspaces', id);
 }
 
-/** Creates workspace metadata and moves legacy repo-local state once. */
+/**
+ * Creates workspace metadata and moves earlier state into it once. Legacy
+ * directories are tried in order; a file already present is never replaced.
+ */
 export async function prepareWorkspaceStorage(
   workspacePath: string,
   storagePath = workspaceStoragePath(workspacePath),
+  legacyDirs: readonly string[] = [path.join(workspacePath, SIEVE_DIR)],
 ): Promise<void> {
   await fs.mkdir(storagePath, { recursive: true });
 
-  await Promise.all([
-    migrateLegacyFile(workspacePath, storagePath, TRIAGE_FILE),
-    migrateLegacyFile(workspacePath, storagePath, ANNOTATIONS_FILE),
-  ]);
+  for (const legacyDir of legacyDirs) {
+    await Promise.all([
+      migrateLegacyFile(legacyDir, storagePath, TRIAGE_FILE),
+      migrateLegacyFile(legacyDir, storagePath, ANNOTATIONS_FILE),
+    ]);
+  }
 
   await fs.writeFile(
     path.join(storagePath, WORKSPACE_FILE),
@@ -33,11 +39,11 @@ export async function prepareWorkspaceStorage(
 }
 
 async function migrateLegacyFile(
-  workspacePath: string,
+  legacyDir: string,
   storagePath: string,
   filename: string,
 ): Promise<void> {
-  const legacyPath = path.join(workspacePath, SIEVE_DIR, filename);
+  const legacyPath = path.join(legacyDir, filename);
   try {
     await fs.copyFile(
       legacyPath,

@@ -61,6 +61,7 @@ Branch commits and current workspace changes in one panel. Triage them one by on
 - Compare any branches, tags, or commits: pick the base, then the target, from fuzzy branch and tag pickers — or type a commit, `base...target`, or `base..target`
 - Change just the base or just the target from the committed section's right-click menu
 - Tree view grouped by directory with git status badges (A, M, D, R); folder icons show `reviewed/total` and turn green once every file inside is reviewed, orange when one is flagged
+- Worktree aware: open a repository and its worktrees side by side, keep worktrees inside the repository folder, or turn on VS Code's `git.detectWorktrees` setting — each one gets its own group in the panel with its own review state
 - Filter by status: All / Unreviewed / Reviewed / Flagged
 - Progress in the status bar: `12/47 reviewed`
 
@@ -136,6 +137,8 @@ For each [security]: assess the OWASP risk level and provide a concrete remediat
 ### Let Your Agent Pick Up the Review
 
 Run **Sieve: Install Agent Skill** from the Command Palette and choose Claude Code, Codex, or both. After that, ask your agent to address your latest review: the Sieve skill is selected automatically, finds the annotations for the current workspace, and works through them without an export or paste step.
+
+Each repository and worktree keeps its own review, so an agent working in a worktree picks up exactly the annotations you left there.
 
 The skill is read-only: it can fix your code, but only you resolve or delete annotations in Sieve.
 

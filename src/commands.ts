@@ -14,9 +14,9 @@ export function registerCommands(
   context: vscode.ExtensionContext,
   getSession: () => SieveSession | undefined,
 ): vscode.Disposable[] {
-  const withSession = (fn: (s: SieveSession) => void | Promise<void>) => () => {
+  const withSession = (fn: (s: SieveSession, item?: unknown) => void | Promise<void>) => (item?: unknown) => {
     const s = getSession();
-    if (s) void fn(s);
+    if (s) void fn(s, item);
   };
 
   return [
@@ -26,7 +26,7 @@ export function registerCommands(
     vscode.commands.registerCommand(Commands.changeComparisonTarget, withSession(changeComparisonTarget)),
     vscode.commands.registerCommand(Commands.markReviewed, (item?: unknown) => {
       const s = getSession();
-      if (s) toggleTriageSelected(s.treeView, s.triage, 'reviewed', item);
+      if (s) toggleTriageSelected(s.treeView, 'reviewed', item);
     }),
     vscode.commands.registerCommand(Commands.flag, (item?: unknown) => {
       const s = getSession();

@@ -1,10 +1,12 @@
 import * as vscode from 'vscode';
 import type { DiffSource } from '../diff/diff.model';
+import type { ReviewRepository } from '../review/review.repository';
 import type { ReviewDeskItem } from './review-desk.items';
 
 export class SourceItem extends vscode.TreeItem {
   constructor(
     readonly source: DiffSource,
+    readonly repository: ReviewRepository,
     readonly children: ReviewDeskItem[],
     fileCount: number,
   ) {
