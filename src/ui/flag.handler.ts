@@ -33,20 +33,21 @@ export async function flagWithAnnotation(session: SieveSession, item?: unknown):
   const target = item instanceof FileItem ? item : session.treeView.selection[0];
   if (!(target instanceof FileItem)) return;
 
-  const key = reviewKey(target.file);
-  const current = session.triage.getState(key);
+  const { file, repository } = target;
+  const key = reviewKey(file);
+  const current = repository.triage.getState(key);
 
   // Unflagging — just revert to unreviewed
   if (current === 'flagged') {
-    session.triage.setState(key, 'unreviewed');
+    repository.triage.setState(key, 'unreviewed');
     return;
   }
 
   // Flagging — set state first
-  session.triage.setState(key, 'flagged');
+  repository.triage.setState(key, 'flagged');
 
   // If file already has annotations, no need to prompt
-  const existing = session.annotations.getForFile(target.file);
+  const existing = repository.annotations.getForFile(file);
   if (existing.length > 0) return;
 
   // Prompt for a reason
@@ -62,7 +63,7 @@ export async function flagWithAnnotation(session: SieveSession, item?: unknown):
   // Cancel or "None" both result in no category — annotation is still created
   const category = picked?.value;
 
-  await session.annotationController.addFileAnnotation(target.file, body, category).catch(err => {
+  await session.annotationController.addFileAnnotation({ file, repository }, body, category).catch(err => {
     logger.error('Failed to create flag annotation', err);
   });
 }

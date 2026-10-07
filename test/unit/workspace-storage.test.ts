@@ -32,4 +32,29 @@ describe('workspace storage', () => {
     await prepareWorkspaceStorage(workspace, storage);
     expect(JSON.parse(await fs.readFile(path.join(storage, 'annotations.json'), 'utf-8'))).toEqual([{ legacy: true }]);
   });
+
+  it('moves state kept for a subfolder workspace to the repository root, first location winning', async () => {
+    const root = await fs.mkdtemp(path.join(tmpdir(), 'sieve-storage-'));
+    temporaryPaths.push(root);
+    const repo = path.join(root, 'repo');
+    const subfolder = path.join(repo, 'packages', 'web');
+    const sieveHome = path.join(root, 'home', '.sieve');
+    const subfolderStorage = workspaceStoragePath(subfolder, sieveHome);
+    const repoStorage = workspaceStoragePath(repo, sieveHome);
+    await fs.mkdir(path.join(subfolder, '.sieve'), { recursive: true });
+    await fs.writeFile(path.join(subfolder, '.sieve', 'triage.json'), '{"from":"repo-local"}');
+    await fs.mkdir(subfolderStorage, { recursive: true });
+    await fs.writeFile(path.join(subfolderStorage, 'triage.json'), '{"from":"subfolder-storage"}');
+    await fs.writeFile(path.join(subfolderStorage, 'annotations.json'), '[{"from":"subfolder-storage"}]');
+
+    await prepareWorkspaceStorage(repo, repoStorage, [path.join(subfolder, '.sieve'), subfolderStorage]);
+
+    expect(JSON.parse(await fs.readFile(path.join(repoStorage, 'triage.json'), 'utf-8'))).toEqual({ from: 'repo-local' });
+    expect(JSON.parse(await fs.readFile(path.join(repoStorage, 'annotations.json'), 'utf-8'))).toEqual([{ from: 'subfolder-storage' }]);
+    // The losing copy stays where it was rather than being deleted.
+    expect(JSON.parse(await fs.readFile(path.join(subfolderStorage, 'triage.json'), 'utf-8'))).toEqual({ from: 'subfolder-storage' });
+    expect(JSON.parse(await fs.readFile(path.join(repoStorage, 'workspace.json'), 'utf-8'))).toMatchObject({
+      workspacePath: path.resolve(repo),
+    });
+  });
 });

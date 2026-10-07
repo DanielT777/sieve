@@ -60,6 +60,7 @@ Branch commits and current workspace changes in one panel. Triage them one by on
 - Committed changes use the branch merge-base; current changes include staged, unstaged, and untracked files
 - Compare any branches, tags, or commits with `base...target` or `base..target`
 - Tree view grouped by directory with git status badges (A, M, D, R)
+- Worktree aware: open a repository and its worktrees side by side, keep worktrees inside the repository folder, or turn on VS Code's `git.detectWorktrees` setting — each one gets its own group in the panel with its own review state
 - Filter by status: All / Unreviewed / Reviewed / Flagged
 - Progress in the status bar: `12/47 reviewed`
 
@@ -135,6 +136,8 @@ For each [security]: assess the OWASP risk level and provide a concrete remediat
 ### Let Your Agent Pick Up the Review
 
 Run **Sieve: Install Agent Skill** from the Command Palette and choose Claude Code, Codex, or both. After that, ask your agent to address your latest review: the Sieve skill is selected automatically, finds the annotations for the current workspace, and works through them without an export or paste step.
+
+Each repository and worktree keeps its own review, so an agent working in a worktree picks up exactly the annotations you left there.
 
 The skill is read-only: it can fix your code, but only you resolve or delete annotations in Sieve.
 

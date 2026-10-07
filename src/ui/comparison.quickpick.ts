@@ -1,7 +1,14 @@
 import * as vscode from 'vscode';
 import type { SieveSession } from '../shared/sieve.session';
+import { pickRepository } from './repository.quickpick';
 
 export async function chooseCommittedComparison(session: SieveSession): Promise<void> {
+  const repository = await pickRepository(
+    session.repositories(),
+    'Choose the repository whose committed changes to compare',
+  );
+  if (!repository) return;
+
   const picked = await vscode.window.showQuickPick([
     {
       label: '$(git-branch) Committed on this branch',
@@ -18,16 +25,16 @@ export async function chooseCommittedComparison(session: SieveSession): Promise<
 
   try {
     if (picked.mode === 'branch') {
-      session.diff.useBranchComparison();
+      repository.diff.useBranchComparison();
     } else {
-      const current = session.diff.getSources()[0]?.description;
+      const current = repository.diff.getSources()[0]?.description;
       const spec = await vscode.window.showInputBox({
         prompt: 'Compare Git branches, tags, or commits',
         placeHolder: 'main...HEAD',
         value: current && /^\S+\.\.\.\S+$/.test(current) ? current : 'main...HEAD',
       });
       if (!spec) return;
-      await session.diff.setComparison(spec);
+      await repository.diff.setComparison(spec);
     }
 
     await session.treeProvider.reload();

@@ -24,7 +24,7 @@ export function registerCommands(
     vscode.commands.registerCommand(Commands.chooseComparison, withSession(chooseCommittedComparison)),
     vscode.commands.registerCommand(Commands.markReviewed, (item?: unknown) => {
       const s = getSession();
-      if (s) toggleTriageSelected(s.treeView, s.triage, 'reviewed', item);
+      if (s) toggleTriageSelected(s.treeView, 'reviewed', item);
     }),
     vscode.commands.registerCommand(Commands.flag, (item?: unknown) => {
       const s = getSession();

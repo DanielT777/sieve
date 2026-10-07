@@ -1,11 +1,16 @@
 import * as vscode from 'vscode';
 import type { ChangedFile } from '../diff/diff.model';
 import type { ReviewState } from '../review/triage.enum';
+import type { ReviewRepository } from '../review/review.repository';
 import { TRIAGE_ICON, STATUS_BADGE } from './triage.icons';
 
 /** A file node in the Review Desk tree. Shows triage state, git status badge, and opens diff on click. */
 export class FileItem extends vscode.TreeItem {
-  constructor(readonly file: ChangedFile, state: ReviewState) {
+  constructor(
+    readonly file: ChangedFile,
+    readonly repository: ReviewRepository,
+    state: ReviewState,
+  ) {
     super(
       file.relativePath.split('/').pop() ?? file.relativePath,
       vscode.TreeItemCollapsibleState.None,

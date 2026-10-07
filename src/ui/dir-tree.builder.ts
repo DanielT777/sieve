@@ -1,6 +1,6 @@
 import type { ChangedFile } from '../diff/diff.model';
 import { reviewKey } from '../diff/diff.model';
-import type { TriageManager } from '../review/triage.manager';
+import type { ReviewRepository } from '../review/review.repository';
 import { FolderItem } from './folder.item';
 import { FileItem } from './file.item';
 
@@ -33,13 +33,14 @@ function buildDirTree(files: readonly ChangedFile[]): DirTree {
   return root;
 }
 
-function treeToItems(tree: DirTree, triage: TriageManager): TreeResult {
+function treeToItems(tree: DirTree, repository: ReviewRepository): TreeResult {
+  const { triage } = repository;
   const items: (FolderItem | FileItem)[] = [];
   const allUris: string[] = [];
 
   const sortedDirs = [...tree.dirs.entries()].sort(([a], [b]) => a.localeCompare(b));
   for (const [name, subtree] of sortedDirs) {
-    const result = treeToItems(subtree, triage);
+    const result = treeToItems(subtree, repository);
     items.push(new FolderItem(name, result.items, triage.computeAggregateState(result.uris), result.uris.length));
     allUris.push(...result.uris);
   }
@@ -51,7 +52,7 @@ function treeToItems(tree: DirTree, triage: TriageManager): TreeResult {
   });
   for (const file of sortedFiles) {
     const key = reviewKey(file);
-    items.push(new FileItem(file, triage.getState(key)));
+    items.push(new FileItem(file, repository, triage.getState(key)));
     allUris.push(key);
   }
 
@@ -61,7 +62,7 @@ function treeToItems(tree: DirTree, triage: TriageManager): TreeResult {
 /** Converts a flat file list into a sorted, hierarchical tree of FolderItems and FileItems. */
 export function buildReviewTree(
   files: readonly ChangedFile[],
-  triage: TriageManager,
+  repository: ReviewRepository,
 ): (FolderItem | FileItem)[] {
-  return treeToItems(buildDirTree(files), triage).items;
+  return treeToItems(buildDirTree(files), repository).items;
 }
