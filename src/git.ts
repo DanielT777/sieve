@@ -37,9 +37,23 @@ export interface Change {
   readonly status: Status;
 }
 
+export enum RefType {
+  Head = 0,
+  RemoteHead = 1,
+  Tag = 2,
+}
+
 export interface Ref {
+  readonly type?: RefType;
   readonly name?: string;
   readonly commit?: string;
+  readonly remote?: string;
+}
+
+export interface RefQuery {
+  readonly count?: number;
+  readonly pattern?: string;
+  readonly sort?: 'alphabetically' | 'committerdate';
 }
 
 export interface UpstreamRef {
@@ -75,6 +89,7 @@ export interface Repository {
   diffBetween(ref1: string, ref2: string, path: string): Promise<string>;
   getBranchBase(name: string): Promise<Branch | undefined>;
   getBranches(query: { readonly remote?: boolean }): Promise<Ref[]>;
+  getRefs(query: RefQuery): Promise<Ref[]>;
   getCommit(ref: string): Promise<{ readonly hash: string }>;
   getMergeBase(ref1: string, ref2: string): Promise<string | undefined>;
 }

@@ -8,6 +8,8 @@ export const WORKSPACE_FILE = 'workspace.json';
 export const Commands = {
   refresh: 'sieve.refresh',
   chooseComparison: 'sieve.chooseComparison',
+  changeComparisonBase: 'sieve.changeComparisonBase',
+  changeComparisonTarget: 'sieve.changeComparisonTarget',
   markReviewed: 'sieve.markReviewed',
   flag: 'sieve.flag',
   filterByStatus: 'sieve.filterByStatus',

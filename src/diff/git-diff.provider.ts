@@ -7,6 +7,32 @@ import type { Disposable } from '../shared/disposable';
 import type { ChangedFile, DiffSource, FileDiff } from './diff.model';
 import { toFileStatus, toRelativePath } from './git.mapper';
 import { parseDiff, buildAddedFileDiff } from './diff.parser';
+import { toRefChoices, type RefChoice } from './git-refs';
+
+export type ComparisonSeparator = '...' | '..';
+
+interface ComparisonSpec {
+  readonly base: string;
+  readonly separator: ComparisonSeparator;
+  readonly target: string;
+}
+
+/** The refs behind the committed section, so pickers can preselect them. */
+export interface ComparisonRefs {
+  readonly mode: 'branch' | 'custom';
+  readonly base: string | undefined;
+  readonly target: string | undefined;
+  readonly separator: ComparisonSeparator;
+}
+
+/** The committed section when there is nothing to compare yet. */
+const NO_COMPARISON: DiffSource = {
+  id: 'committed',
+  label: 'Committed on this branch',
+  description: 'No comparison base found',
+  baseRef: 'HEAD',
+  targetRef: 'HEAD',
+};
 
 /**
  * Implements DiffProvider on top of the VS Code built-in git extension.
@@ -21,19 +47,18 @@ export class GitDiffProvider implements DiffProvider {
     baseRef: 'HEAD',
     targetRef: undefined,
   };
-  private _committedSource: DiffSource = {
-    id: 'committed',
-    label: 'Committed on this branch',
-    description: 'No comparison base found',
-    baseRef: 'HEAD',
-    targetRef: 'HEAD',
+  private _committedSource = NO_COMPARISON;
+  private _customSpec: ComparisonSpec | undefined;
+  private _comparisonRefs: ComparisonRefs = {
+    mode: 'branch', base: undefined, target: undefined, separator: '...',
   };
-  private _customComparison: DiffSource | undefined;
 
   constructor(private readonly _repo: Repository) {}
 
   async getChangedFiles(): Promise<readonly ChangedFile[]> {
-    const committedSource = this._customComparison ?? await this._resolveBranchSource();
+    const committedSource = this._customSpec
+      ? await this._resolveCustomSource(this._customSpec)
+      : await this._resolveBranchSource();
     this._committedSource = committedSource;
 
     const committed = committedSource.baseRef === committedSource.targetRef
@@ -89,34 +114,24 @@ export class GitDiffProvider implements DiffProvider {
   }
 
   async setComparison(spec: string): Promise<void> {
-    const match = /^(.+?)(\.\.\.?)(.+)$/.exec(spec.trim());
-    if (!match) throw new Error('Use base...target or base..target');
-
-    const base = match[1]!.trim();
-    const separator = match[2]!;
-    const target = match[3]!.trim();
-    if (!base || !target) throw new Error('Both refs are required');
-
-    const [baseCommit, targetCommit] = await Promise.all([
-      this._repo.getCommit(base),
-      this._repo.getCommit(target),
-    ]);
-    const baseRef = separator === '...'
-      ? await this._repo.getMergeBase(baseCommit.hash, targetCommit.hash)
-      : baseCommit.hash;
-    if (!baseRef) throw new Error(`No merge base between ${base} and ${target}`);
-
-    this._customComparison = {
-      id: `compare:${base}${separator}${target}`,
-      label: 'Compared changes',
-      description: `${base}${separator}${target}`,
-      baseRef,
-      targetRef: targetCommit.hash,
-    };
+    const parsed = parseComparison(spec);
+    // Resolve once up front so invalid refs are reported to the user immediately.
+    await this._resolveComparison(parsed);
+    this._customSpec = parsed;
   }
 
   useBranchComparison(): void {
-    this._customComparison = undefined;
+    this._customSpec = undefined;
+  }
+
+  getComparison(): ComparisonRefs {
+    return this._comparisonRefs;
+  }
+
+  /** Branches, remote branches, and tags, most recently committed first. */
+  async listRefs(): Promise<RefChoice[]> {
+    const refs = await this._repo.getRefs({ sort: 'committerdate' });
+    return toRefChoices(refs, this._repo.state.HEAD);
   }
 
   private _mapChanges(changes: readonly Change[], source: DiffSource): ChangedFile[] {
@@ -139,14 +154,54 @@ export class GitDiffProvider implements DiffProvider {
     };
   }
 
+  /** Re-resolves custom refs on every refresh so branch names follow new commits. */
+  private async _resolveCustomSource(spec: ComparisonSpec): Promise<DiffSource> {
+    this._comparisonRefs = { mode: 'custom', ...spec };
+    try {
+      return await this._resolveComparison(spec);
+    } catch {
+      const range = `${spec.base}${spec.separator}${spec.target}`;
+      return {
+        id: `compare:${range}`,
+        label: 'Compared changes',
+        description: `Cannot resolve ${range}`,
+        baseRef: 'HEAD',
+        targetRef: 'HEAD',
+      };
+    }
+  }
+
+  private async _resolveComparison({ base, separator, target }: ComparisonSpec): Promise<DiffSource> {
+    const [baseCommit, targetCommit] = await Promise.all([
+      this._repo.getCommit(base),
+      this._repo.getCommit(target),
+    ]);
+    const baseRef = separator === '...'
+      ? await this._repo.getMergeBase(baseCommit.hash, targetCommit.hash)
+      : baseCommit.hash;
+    if (!baseRef) throw new Error(`No merge base between ${base} and ${target}`);
+
+    return {
+      id: `compare:${base}${separator}${target}`,
+      label: 'Compared changes',
+      description: `${base}${separator}${target}`,
+      baseRef,
+      // Keep the ref name, as branch mode keeps 'HEAD': open diff documents and their
+      // annotations stay attached while the target branch gains commits.
+      targetRef: target,
+    };
+  }
+
   private async _resolveBranchSource(): Promise<DiffSource> {
     const branch = this._repo.state.HEAD?.name;
-    if (!branch) return this._committedSource;
+    this._comparisonRefs = { mode: 'branch', base: undefined, target: branch, separator: '...' };
+    if (!branch) return NO_COMPARISON;
 
     const base = await this._findBaseBranch(branch);
+    this._comparisonRefs = { ...this._comparisonRefs, base };
     if (!base) {
       return {
-        ...this._committedSource,
+        ...NO_COMPARISON,
         id: `branch:${branch}`,
         description: `Choose a base for ${branch}`,
       };
@@ -155,7 +210,7 @@ export class GitDiffProvider implements DiffProvider {
     const mergeBase = await this._repo.getMergeBase(base, 'HEAD');
     if (!mergeBase) {
       return {
-        ...this._committedSource,
+        ...NO_COMPARISON,
         id: `branch:${base}...${branch}`,
         description: `No merge base: ${base}...${branch}`,
       };
@@ -191,6 +246,17 @@ export class GitDiffProvider implements DiffProvider {
   watchChanges(callback: () => void): Disposable {
     return this._repo.state.onDidChange(callback);
   }
+}
+
+function parseComparison(spec: string): ComparisonSpec {
+  const match = /^(.+?)(\.\.\.?)(.+)$/.exec(spec.trim());
+  if (!match) throw new Error('Use base...target or base..target');
+
+  const base = match[1]!.trim();
+  const separator = match[2] as ComparisonSeparator;
+  const target = match[3]!.trim();
+  if (!base || !target) throw new Error('Both refs are required');
+  return { base, separator, target };
 }
 
 function sameBranch(left: string, right: string): boolean {

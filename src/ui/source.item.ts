@@ -13,6 +13,7 @@ export class SourceItem extends vscode.TreeItem {
       ? `${fileCount} · ${source.description}`
       : source.description;
     this.iconPath = new vscode.ThemeIcon('git-compare');
-    this.contextValue = 'source';
+    // The working tree has no target ref; every other section is a committed comparison.
+    this.contextValue = source.targetRef === undefined ? 'source' : 'committedSource';
   }
 }
