@@ -40,7 +40,12 @@ function treeToItems(tree: DirTree, triage: TriageManager): TreeResult {
   const sortedDirs = [...tree.dirs.entries()].sort(([a], [b]) => a.localeCompare(b));
   for (const [name, subtree] of sortedDirs) {
     const result = treeToItems(subtree, triage);
-    items.push(new FolderItem(name, result.items, triage.computeAggregateState(result.uris), result.uris.length));
+    items.push(new FolderItem(
+      name,
+      result.items,
+      triage.computeAggregateState(result.uris),
+      triage.computeStats(result.uris),
+    ));
     allUris.push(...result.uris);
   }
 

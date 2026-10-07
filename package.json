@@ -76,6 +76,16 @@
         "icon": "$(git-compare)"
       },
       {
+        "command": "sieve.changeComparisonBase",
+        "title": "Change Comparison Base…",
+        "category": "Sieve"
+      },
+      {
+        "command": "sieve.changeComparisonTarget",
+        "title": "Change Comparison Target…",
+        "category": "Sieve"
+      },
+      {
         "command": "sieve.markReviewed",
         "title": "Mark as Reviewed",
         "category": "Sieve",
@@ -163,6 +173,21 @@
         }
       ],
       "view/item/context": [
+        {
+          "command": "sieve.chooseComparison",
+          "when": "view == sieve.reviewDesk && viewItem == committedSource",
+          "group": "inline"
+        },
+        {
+          "command": "sieve.changeComparisonBase",
+          "when": "view == sieve.reviewDesk && viewItem == committedSource",
+          "group": "0_compare@1"
+        },
+        {
+          "command": "sieve.changeComparisonTarget",
+          "when": "view == sieve.reviewDesk && viewItem == committedSource",
+          "group": "0_compare@2"
+        },
         {
           "command": "sieve.markReviewed",
           "when": "view == sieve.reviewDesk && viewItem == file",

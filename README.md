@@ -58,8 +58,9 @@ Branch commits and current workspace changes in one panel. Triage them one by on
 
 - Separate `Committed on this branch` and `Current changes` sections
 - Committed changes use the branch merge-base; current changes include staged, unstaged, and untracked files
-- Compare any branches, tags, or commits with `base...target` or `base..target`
-- Tree view grouped by directory with git status badges (A, M, D, R)
+- Compare any branches, tags, or commits: pick the base, then the target, from fuzzy branch and tag pickers — or type a commit, `base...target`, or `base..target`
+- Change just the base or just the target from the committed section's right-click menu
+- Tree view grouped by directory with git status badges (A, M, D, R); folder icons show `reviewed/total` and turn green once every file inside is reviewed, orange when one is flagged
 - Filter by status: All / Unreviewed / Reviewed / Flagged
 - Progress in the status bar: `12/47 reviewed`
 
