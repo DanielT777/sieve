@@ -33,20 +33,25 @@ function buildDirTree(files: readonly ChangedFile[]): DirTree {
   return root;
 }
 
-function treeToItems(tree: DirTree, triage: TriageManager): TreeResult {
+function treeToItems(
+  tree: DirTree,
+  triage: TriageManager,
+  isVisible: (file: ChangedFile) => boolean,
+): TreeResult {
   const items: (FolderItem | FileItem)[] = [];
   const allUris: string[] = [];
 
   const sortedDirs = [...tree.dirs.entries()].sort(([a], [b]) => a.localeCompare(b));
   for (const [name, subtree] of sortedDirs) {
-    const result = treeToItems(subtree, triage);
+    const result = treeToItems(subtree, triage, isVisible);
+    allUris.push(...result.uris);
+    if (result.items.length === 0) continue;
     items.push(new FolderItem(
       name,
       result.items,
       triage.computeAggregateState(result.uris),
       triage.computeStats(result.uris),
     ));
-    allUris.push(...result.uris);
   }
 
   const sortedFiles = [...tree.files].sort((a, b) => {
@@ -56,17 +61,22 @@ function treeToItems(tree: DirTree, triage: TriageManager): TreeResult {
   });
   for (const file of sortedFiles) {
     const key = reviewKey(file);
-    items.push(new FileItem(file, triage.getState(key)));
+    if (isVisible(file)) items.push(new FileItem(file, triage.getState(key)));
     allUris.push(key);
   }
 
   return { items, uris: allUris };
 }
 
-/** Converts a flat file list into a sorted, hierarchical tree of FolderItems and FileItems. */
+/**
+ * Converts a flat file list into a sorted, hierarchical tree of FolderItems and
+ * FileItems. Only visible files are listed, but folder progress always counts
+ * every file below the folder, so a filter never makes a folder look done.
+ */
 export function buildReviewTree(
   files: readonly ChangedFile[],
   triage: TriageManager,
+  isVisible: (file: ChangedFile) => boolean = () => true,
 ): (FolderItem | FileItem)[] {
-  return treeToItems(buildDirTree(files), triage).items;
+  return treeToItems(buildDirTree(files), triage, isVisible).items;
 }

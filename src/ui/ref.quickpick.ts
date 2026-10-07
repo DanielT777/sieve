@@ -25,8 +25,13 @@ interface RefItem extends vscode.QuickPickItem {
   readonly pick?: RefPick;
 }
 
-const ICON: Record<RefKind, string> = { branch: 'git-branch', remote: 'cloud', tag: 'tag' };
-const GROUP: Record<RefKind, string> = { branch: 'Branches', remote: 'Remote branches', tag: 'Tags' };
+const ICON: Record<RefKind, string> = { head: 'git-commit', branch: 'git-branch', remote: 'cloud', tag: 'tag' };
+const GROUP: Record<RefKind, string> = {
+  head: 'Detached HEAD',
+  branch: 'Branches',
+  remote: 'Remote branches',
+  tag: 'Tags',
+};
 
 /**
  * Fuzzy picker over branches, remote branches, and tags. Anything Git can

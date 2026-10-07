@@ -25,6 +25,15 @@ export interface ComparisonRefs {
   readonly separator: ComparisonSeparator;
 }
 
+/** The committed section when there is nothing to compare yet. */
+const NO_COMPARISON: DiffSource = {
+  id: 'committed',
+  label: 'Committed on this branch',
+  description: 'No comparison base found',
+  baseRef: 'HEAD',
+  targetRef: 'HEAD',
+};
+
 /**
  * Implements DiffProvider on top of the VS Code built-in git extension.
  *
@@ -38,13 +47,7 @@ export class GitDiffProvider implements DiffProvider {
     baseRef: 'HEAD',
     targetRef: undefined,
   };
-  private _committedSource: DiffSource = {
-    id: 'committed',
-    label: 'Committed on this branch',
-    description: 'No comparison base found',
-    baseRef: 'HEAD',
-    targetRef: 'HEAD',
-  };
+  private _committedSource = NO_COMPARISON;
   private _customSpec: ComparisonSpec | undefined;
   private _comparisonRefs: ComparisonRefs = {
     mode: 'branch', base: undefined, target: undefined, separator: '...',
@@ -128,7 +131,7 @@ export class GitDiffProvider implements DiffProvider {
   /** Branches, remote branches, and tags, most recently committed first. */
   async listRefs(): Promise<RefChoice[]> {
     const refs = await this._repo.getRefs({ sort: 'committerdate' });
-    return toRefChoices(refs, this._repo.state.HEAD?.name);
+    return toRefChoices(refs, this._repo.state.HEAD);
   }
 
   private _mapChanges(changes: readonly Change[], source: DiffSource): ChangedFile[] {
@@ -183,20 +186,22 @@ export class GitDiffProvider implements DiffProvider {
       label: 'Compared changes',
       description: `${base}${separator}${target}`,
       baseRef,
-      targetRef: targetCommit.hash,
+      // Keep the ref name, as branch mode keeps 'HEAD': open diff documents and their
+      // annotations stay attached while the target branch gains commits.
+      targetRef: target,
     };
   }
 
   private async _resolveBranchSource(): Promise<DiffSource> {
     const branch = this._repo.state.HEAD?.name;
     this._comparisonRefs = { mode: 'branch', base: undefined, target: branch, separator: '...' };
-    if (!branch) return this._committedSource;
+    if (!branch) return NO_COMPARISON;
 
     const base = await this._findBaseBranch(branch);
     this._comparisonRefs = { ...this._comparisonRefs, base };
     if (!base) {
       return {
-        ...this._committedSource,
+        ...NO_COMPARISON,
         id: `branch:${branch}`,
         description: `Choose a base for ${branch}`,
       };
@@ -205,7 +210,7 @@ export class GitDiffProvider implements DiffProvider {
     const mergeBase = await this._repo.getMergeBase(base, 'HEAD');
     if (!mergeBase) {
       return {
-        ...this._committedSource,
+        ...NO_COMPARISON,
         id: `branch:${base}...${branch}`,
         description: `No merge base: ${base}...${branch}`,
       };

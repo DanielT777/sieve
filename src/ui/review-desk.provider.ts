@@ -97,11 +97,10 @@ export class ReviewDeskProvider
 
     return this._diff.getSources().map(source => {
       const sourceFiles = this._currentFiles.filter(file => file.source?.id === source.id);
-      const files = this._filter === 'all'
-        ? sourceFiles
-        : sourceFiles.filter(file => this._triage.getState(reviewKey(file)) === this._filter);
-      const children = files.length > 0
-        ? buildReviewTree(files, this._triage)
+      const isVisible = (file: ChangedFile): boolean =>
+        this._filter === 'all' || this._triage.getState(reviewKey(file)) === this._filter;
+      const children = sourceFiles.some(isVisible)
+        ? buildReviewTree(sourceFiles, this._triage, isVisible)
         : [new MessageItem(
             sourceFiles.length > 0 ? 'No files match the current filter' : 'No changes',
           )];

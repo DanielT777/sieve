@@ -47,26 +47,50 @@ describe('GitDiffProvider comparisons', () => {
     await provider.setComparison('release...feature');
     await provider.getChangedFiles();
     expect(provider.getSources()[0]!.description).toBe('release...feature');
-    expect(diffBetween).toHaveBeenCalledWith('base-sha', 'feature-sha');
+    expect(diffBetween).toHaveBeenCalledWith('base-sha', 'feature');
   });
 });
 
 describe('GitDiffProvider custom comparisons', () => {
-  it('re-resolves branch names on every refresh so new commits appear', async () => {
+  it('follows the target branch on every refresh while keeping its documents stable', async () => {
     let featureTip = 'tip-1';
     const repo = fakeRepo({
       getCommit: vi.fn(async (ref: string) => ({ hash: ref === 'feature' ? featureTip : `${ref}-sha` })),
+      getMergeBase: vi.fn(async (_base: string, target: string) => `merge-base-of-${target}`),
     });
     const provider = new GitDiffProvider(repo);
 
     await provider.setComparison('main...feature');
     await provider.getChangedFiles();
-    expect(repo.diffBetween).toHaveBeenLastCalledWith('base-sha', 'tip-1');
+    expect(repo.diffBetween).toHaveBeenLastCalledWith('merge-base-of-tip-1', 'feature');
 
+    // A commit on `feature` moves the merge base it is compared from...
     featureTip = 'tip-2';
     await provider.getChangedFiles();
-    expect(repo.diffBetween).toHaveBeenLastCalledWith('base-sha', 'tip-2');
-    expect(provider.getSources()[0]!.id).toBe('compare:main...feature');
+    expect(repo.diffBetween).toHaveBeenLastCalledWith('merge-base-of-tip-2', 'feature');
+    // ...but the target stays the ref name, so open diff documents keep their annotations.
+    expect(provider.getSources()[0]).toMatchObject({ id: 'compare:main...feature', targetRef: 'feature' });
+  });
+
+  it('drops the custom comparison when going back to the branch comparison', async () => {
+    const repo = fakeRepo({ getBranches: vi.fn(async () => [{ name: 'feature' }]) });
+    const provider = new GitDiffProvider(repo);
+    await provider.setComparison('v1.0...v2.0');
+    await provider.getChangedFiles();
+
+    provider.useBranchComparison();
+    vi.mocked(repo.diffBetween).mockClear();
+    const files = await provider.getChangedFiles();
+
+    // No base branch exists, so the section is empty rather than still showing v1.0...v2.0.
+    expect(provider.getSources()[0]).toMatchObject({
+      label: 'Committed on this branch',
+      description: 'Choose a base for feature',
+      baseRef: 'HEAD',
+      targetRef: 'HEAD',
+    });
+    expect(repo.diffBetween).not.toHaveBeenCalled();
+    expect(files.filter(file => file.source?.id !== 'working-tree')).toEqual([]);
   });
 
   it('shows an empty section instead of failing when a chosen ref disappears', async () => {
