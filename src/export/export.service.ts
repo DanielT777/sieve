@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import type { ReviewRepository } from '../review/review.repository';
+import { uniqueRepositoryNames } from '../review/repository.names';
 import type { ReviewExporter, ExportFileData } from './review.exporter';
 import type { Annotation } from '../review/annotation';
 import { ClaudeExporter } from './claude.exporter';
@@ -30,8 +31,9 @@ export class ExportService {
     if (!repositories) return;
 
     try {
+      const prefixes = repositories.length > 1 ? uniqueRepositoryNames(repositories) : [];
       const payload = (await Promise.all(
-        repositories.map(repository => this._buildPayload(repository, repositories.length > 1)),
+        repositories.map((repository, index) => this._buildPayload(repository, prefixes[index])),
       )).flat();
 
       if (payload.length === 0) {
@@ -75,12 +77,12 @@ export class ExportService {
 
   /**
    * Builds one repository's payload: only files that have annotations, with
-   * hunks only (no full file). Paths get the repository name as a prefix when
-   * several repositories are copied together.
+   * hunks only (no full file). When several repositories are copied together,
+   * paths get a prefix naming the repository.
    */
   private async _buildPayload(
     repository: ReviewRepository,
-    prefixPaths: boolean,
+    pathPrefix: string | undefined,
   ): Promise<readonly ExportFileData[]> {
     const allAnnotations = repository.annotations.getAll();
     if (allAnnotations.length === 0) return [];
@@ -124,10 +126,10 @@ export class ExportService {
         return { file, fileDiff, annotations: fileAnnotations };
       }),
     );
-    if (!prefixPaths) return payload;
+    if (pathPrefix === undefined) return payload;
 
     return payload.map(data => {
-      const file = { ...data.file, relativePath: `${repository.label}/${data.file.relativePath}` };
+      const file = { ...data.file, relativePath: `${pathPrefix}/${data.file.relativePath}` };
       return { ...data, file, fileDiff: { ...data.fileDiff, file } };
     });
   }

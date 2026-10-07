@@ -3,8 +3,10 @@ import * as path from 'path';
 import { tmpdir } from 'os';
 import { afterEach, describe, expect, it } from 'vitest';
 import {
+  findRepositoryRoot,
   inspectRepository,
   isWithin,
+  samePath,
   selectRepositories,
   type RepositoryCandidate,
 } from '../../src/review/repository.discovery';
@@ -44,6 +46,23 @@ describe('inspectRepository', () => {
   });
 });
 
+describe('findRepositoryRoot', () => {
+  it('finds the nearest working tree on disk, so a nested worktree owns itself', async () => {
+    const root = await fs.mkdtemp(path.join(tmpdir(), 'sieve-roots-'));
+    temporaryPaths.push(root);
+    const main = path.join(root, 'main');
+    const nested = path.join(main, '.worktrees', 'fix');
+    await fs.mkdir(path.join(main, '.git'), { recursive: true });
+    await fs.mkdir(path.join(main, 'packages', 'web'), { recursive: true });
+    await fs.mkdir(nested, { recursive: true });
+    await fs.writeFile(path.join(nested, '.git'), 'gitdir: ../../.git/worktrees/fix\n');
+
+    expect(await findRepositoryRoot(path.join(main, 'packages', 'web'))).toBe(main);
+    expect(await findRepositoryRoot(nested)).toBe(nested);
+    expect(await findRepositoryRoot(path.join(nested, 'src'))).toBe(nested);
+  });
+});
+
 describe('selectRepositories', () => {
   const main = repo('/code/app', 'repository', '/code/app/.git');
   const sibling = repo('/code/app-feature', 'worktree', '/code/app/.git');
@@ -74,6 +93,14 @@ describe('selectRepositories', () => {
 
   it('ignores unrelated repositories outside the workspace', () => {
     expect(selectRepositories([main, unrelated], ['/code/app'])).toEqual([main]);
+  });
+});
+
+describe('samePath', () => {
+  it('ignores trailing separators and redundant segments', () => {
+    expect(samePath('/code/app/', '/code/app')).toBe(true);
+    expect(samePath('/code/app/src/..', '/code/app')).toBe(true);
+    expect(samePath('/code/app', '/code/app-feature')).toBe(false);
   });
 });
 

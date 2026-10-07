@@ -6,7 +6,13 @@ import { AnnotationStore } from '../annotations/annotation.store';
 import { TriageManager } from './triage.manager';
 import { loadTriage, saveTriage } from './triage.store';
 import type { ReviewRepository } from './review.repository';
-import { inspectRepository, selectRepositories, type RepositoryKind } from './repository.discovery';
+import {
+  findRepositoryRoot,
+  inspectRepository,
+  samePath,
+  selectRepositories,
+  type RepositoryKind,
+} from './repository.discovery';
 import { prepareWorkspaceStorage, workspaceStoragePath } from '../shared/workspace-storage';
 import { SIEVE_DIR } from '../shared/config';
 import { debounce } from '../shared/debounce';
@@ -24,6 +30,7 @@ interface OpenRepository {
  */
 export class RepositoryTracker implements vscode.Disposable {
   private _open: readonly OpenRepository[] = [];
+  private _closedRoots = new Set<string>();
   private _queue: Promise<void> = Promise.resolve();
 
   private readonly _onDidChange = new vscode.EventEmitter<void>();
@@ -40,7 +47,11 @@ export class RepositoryTracker implements vscode.Disposable {
     const refresh = (): void => void this.refresh();
     this._subscriptions = [
       _git.onDidOpenRepository(refresh),
-      _git.onDidCloseRepository(refresh),
+      _git.onDidCloseRepository(closed => {
+        // If Git reopens this root before the next sync, it still needs fresh handles.
+        this._closedRoots.add(closed.rootUri.fsPath);
+        refresh();
+      }),
       vscode.workspace.onDidChangeWorkspaceFolders(refresh),
     ];
   }
@@ -74,9 +85,16 @@ export class RepositoryTracker implements vscode.Disposable {
       ...await inspectRepository(git.rootUri.fsPath),
     })));
 
+    const closedRoots = [...this._closedRoots];
+    this._closedRoots.clear();
+
+    // The git API hands out new Repository objects on every access, so open
+    // repositories are recognised by root, keeping their comparison and state.
     const next: OpenRepository[] = [];
     for (const candidate of selectRepositories(candidates, folders)) {
-      const existing = this._open.find(open => open.repository.git === candidate.git);
+      const existing = closedRoots.some(root => samePath(root, candidate.root))
+        ? undefined
+        : this._open.find(open => samePath(open.repository.root, candidate.root));
       next.push(existing ?? await this._openRepository(candidate.git, candidate.kind, folders));
     }
 
@@ -111,7 +129,7 @@ export class RepositoryTracker implements vscode.Disposable {
     };
 
     try {
-      await prepareWorkspaceStorage(root, storagePath, this._legacyStateDirs(root, folders));
+      await prepareWorkspaceStorage(root, storagePath, await legacyStateDirs(root, folders));
       await Promise.all([loadTriage(triage, storagePath), annotations.load()]);
     } catch (err) {
       logger.error(`Failed to load review state for ${root}`, err);
@@ -128,20 +146,33 @@ export class RepositoryTracker implements vscode.Disposable {
     });
     const watcher = repository.diff.watchChanges(() => this._onDidChangeGitState.fire(repository));
 
-    return { repository, subscriptions: vscode.Disposable.from(save, watcher) };
+    return {
+      repository,
+      subscriptions: {
+        dispose: () => {
+          // Write a pending triage change instead of dropping it.
+          save.flush();
+          save.dispose();
+          watcher.dispose();
+        },
+      },
+    };
   }
+}
 
-  /**
-   * Where earlier versions kept this repository's state: repo-local `.sieve`
-   * folders, and storage keyed by a workspace folder below the repository root.
-   */
-  private _legacyStateDirs(root: string, folders: readonly string[]): string[] {
-    const dirs = [path.join(root, SIEVE_DIR)];
-    for (const folder of folders) {
-      if (folder === root) continue;
-      if (this._git.getRepository(vscode.Uri.file(folder))?.rootUri.fsPath !== root) continue;
-      dirs.push(path.join(folder, SIEVE_DIR), workspaceStoragePath(folder));
-    }
-    return dirs;
+/**
+ * Where earlier versions kept this repository's state: repo-local `.sieve`
+ * folders, and storage keyed by a workspace folder below the repository root.
+ * Ownership comes from the filesystem, so a nested worktree opened as its own
+ * folder never counts as part of the repository around it.
+ */
+async function legacyStateDirs(root: string, folders: readonly string[]): Promise<string[]> {
+  const dirs = [path.join(root, SIEVE_DIR)];
+  for (const folder of folders) {
+    if (samePath(folder, root)) continue;
+    const owner = await findRepositoryRoot(folder);
+    if (!owner || !samePath(owner, root)) continue;
+    dirs.push(path.join(folder, SIEVE_DIR), workspaceStoragePath(folder));
   }
+  return dirs;
 }

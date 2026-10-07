@@ -66,6 +66,25 @@ export function selectRepositories<T extends RepositoryCandidate>(
   return [...selected];
 }
 
+/**
+ * The working tree that owns `fsPath` on disk: the nearest folder at or above
+ * it holding a `.git` directory or file. Unlike asking Git for its open
+ * repositories, this does not depend on which repositories Git has opened yet.
+ */
+export async function findRepositoryRoot(fsPath: string): Promise<string | undefined> {
+  let current = path.resolve(fsPath);
+  for (;;) {
+    if (await fs.stat(path.join(current, '.git')).then(() => true, () => false)) return current;
+    const parent = path.dirname(current);
+    if (parent === current) return undefined;
+    current = parent;
+  }
+}
+
+export function samePath(left: string, right: string): boolean {
+  return comparable(left) === comparable(right);
+}
+
 /** True when `child` is `parent` or lies inside it. */
 export function isWithin(child: string, parent: string): boolean {
   const relative = path.relative(comparable(parent), comparable(child));

@@ -4,6 +4,7 @@ import { reviewKey } from '../diff/diff.model';
 import type { ReviewState } from '../review/triage.enum';
 import type { ReviewStats } from '../review/review.session';
 import type { ReviewFile, ReviewRepository } from '../review/review.repository';
+import { isWithin } from '../review/repository.discovery';
 import { FolderItem } from './folder.item';
 import { FileItem } from './file.item';
 import { MessageItem } from './message.item';
@@ -51,10 +52,17 @@ export class ReviewDeskProvider
         return [];
       }),
     ));
-    this._filesByRepository = new Map(repositories.map((repository, index) => [repository, changedFiles[index]!]));
+    // Git lists a repository nested inside another (e.g. a worktree kept in the
+    // repository folder) as one untracked entry; it is reviewed on its own instead.
+    const roots = repositories.map(repository => repository.root);
+    this._filesByRepository = new Map(repositories.map((repository, index) => [
+      repository,
+      changedFiles[index]!.filter(file =>
+        !roots.some(root => root !== repository.root && isWithin(root, file.uri))),
+    ]));
 
-    const entries = repositories.flatMap((repository, index) =>
-      changedFiles[index]!.map(file => ({ repository, file })),
+    const entries = [...this._filesByRepository].flatMap(([repository, files]) =>
+      files.map(file => ({ repository, file })),
     );
     this._filesByDocument = new Map(
       entries.map(entry => [targetDocumentUri(entry.file).toString(), entry]),
