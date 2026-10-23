@@ -9,6 +9,7 @@ import { flagWithAnnotation } from './ui/flag.handler';
 import { clearReview } from './ui/clear.handler';
 import { changeComparisonBase, changeComparisonTarget, chooseCommittedComparison } from './ui/comparison.quickpick';
 import { installAgentSkill } from './agent/skill.installer';
+import { clearCheckpoint, setCheckpoint } from './ui/checkpoint.handler';
 
 export function registerCommands(
   context: vscode.ExtensionContext,
@@ -51,6 +52,8 @@ export function registerCommands(
     }),
     vscode.commands.registerCommand(Commands.clearReview, withSession(s => clearReview(s))),
     vscode.commands.registerCommand(Commands.installAgentSkill, () => installAgentSkill(context)),
+    vscode.commands.registerCommand(Commands.setCheckpoint, withSession(setCheckpoint)),
+    vscode.commands.registerCommand(Commands.clearCheckpoint, withSession(clearCheckpoint)),
   ];
 }
 

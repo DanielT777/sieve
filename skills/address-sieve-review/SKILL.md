@@ -10,7 +10,7 @@ description: Read and address code-review annotations created in the Sieve VS Co
 1. Resolve the current workspace root with `git rev-parse --show-toplevel`; fall back to the current directory outside Git.
 2. Search `~/.sieve/workspaces/*/workspace.json` and select the entry whose `workspacePath` resolves to that root.
 3. Read the sibling `annotations.json` file. If it is absent or has no unresolved annotations, tell the user that no Sieve feedback is waiting.
-4. Treat `startLine` and `endLine` as zero-based. `fileUri` is the absolute target file. Missing `sourceId` means current working-tree changes.
+4. Treat `startLine` and `endLine` as zero-based. `fileUri` is the absolute target file. Missing `sourceId` means current working-tree changes; `checkpoint` (changes since the last review) also points at the file as it is now in the working tree.
 
 ## Address the feedback
 

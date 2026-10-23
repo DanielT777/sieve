@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import type { DiffSource } from '../diff/diff.model';
+import { CHECKPOINT_SOURCE_ID } from '../diff/diff.model';
 import type { ReviewRepository } from '../review/review.repository';
 import type { ReviewDeskItem } from './review-desk.items';
 
@@ -14,8 +15,10 @@ export class SourceItem extends vscode.TreeItem {
     this.description = fileCount > 0
       ? `${fileCount} · ${source.description}`
       : source.description;
-    this.iconPath = new vscode.ThemeIcon('git-compare');
-    // The working tree has no target ref; every other section is a committed comparison.
-    this.contextValue = source.targetRef === undefined ? 'source' : 'committedSource';
+    const isCheckpoint = source.id === CHECKPOINT_SOURCE_ID;
+    this.iconPath = new vscode.ThemeIcon(isCheckpoint ? 'milestone' : 'git-compare');
+    // Sections without a target ref end at the working tree; the others are committed comparisons.
+    this.contextValue = isCheckpoint ? 'checkpointSource'
+      : source.targetRef === undefined ? 'source' : 'committedSource';
   }
 }

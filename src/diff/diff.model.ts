@@ -13,6 +13,16 @@ export interface DiffSource {
   readonly targetRef: string | undefined;
 }
 
+/** The section listing what changed since the last review checkpoint. */
+export const CHECKPOINT_SOURCE_ID = 'checkpoint';
+
+/** What the working tree looked like when the user finished a review pass. */
+export interface ReviewCheckpoint {
+  /** Git tree object holding the snapshot. */
+  readonly tree: string;
+  readonly createdAt: number; // Unix timestamp (ms)
+}
+
 /** A single line inside a diff hunk. */
 export interface DiffLine {
   readonly type: 'added' | 'removed' | 'context';

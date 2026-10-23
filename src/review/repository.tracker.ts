@@ -5,6 +5,7 @@ import { GitDiffProvider } from '../diff/git-diff.provider';
 import { AnnotationStore } from '../annotations/annotation.store';
 import { TriageManager } from './triage.manager';
 import { loadTriage, saveTriage } from './triage.store';
+import { loadCheckpoint } from '../diff/checkpoint.store';
 import type { ReviewRepository } from './review.repository';
 import {
   findRepositoryRoot,
@@ -123,14 +124,19 @@ export class RepositoryTracker implements vscode.Disposable {
         ?? path.basename(root),
       kind,
       git,
-      diff: new GitDiffProvider(git),
+      diff: new GitDiffProvider(git, this._git.git.path),
       triage,
       annotations,
     };
 
     try {
       await prepareWorkspaceStorage(root, storagePath, await legacyStateDirs(root, folders));
-      await Promise.all([loadTriage(triage, storagePath), annotations.load()]);
+      const [checkpoint] = await Promise.all([
+        loadCheckpoint(storagePath),
+        loadTriage(triage, storagePath),
+        annotations.load(),
+      ]);
+      repository.diff.setCheckpoint(checkpoint);
     } catch (err) {
       logger.error(`Failed to load review state for ${root}`, err);
     }

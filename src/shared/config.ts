@@ -4,6 +4,7 @@ export const SIEVE_DIR = '.sieve';
 export const TRIAGE_FILE = 'triage.json';
 export const ANNOTATIONS_FILE = 'annotations.json';
 export const WORKSPACE_FILE = 'workspace.json';
+export const CHECKPOINT_FILE = 'checkpoint.json';
 
 export const Commands = {
   refresh: 'sieve.refresh',
@@ -20,4 +21,6 @@ export const Commands = {
   deleteAnnotation: 'sieve.deleteAnnotation',
   clearReview: 'sieve.clearReview',
   installAgentSkill: 'sieve.installAgentSkill',
+  setCheckpoint: 'sieve.setCheckpoint',
+  clearCheckpoint: 'sieve.clearCheckpoint',
 } as const;
