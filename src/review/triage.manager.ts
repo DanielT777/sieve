@@ -61,6 +61,15 @@ export class TriageManager {
     }
   }
 
+  /** Forgets every decision made in one section; keys follow `reviewKey`, so not for the working tree. */
+  clearSource(sourceId: string): void {
+    const prefix = `${sourceId}\0`;
+    for (const key of [...this._states.keys()]) {
+      if (key.startsWith(prefix)) this._states.delete(key);
+    }
+    this._onChange();
+  }
+
   clearAll(): void {
     this._states.clear();
     this._onChange();

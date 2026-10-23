@@ -136,4 +136,19 @@ describe('TriageManager', () => {
       expect(triage.getState('/new.ts')).toBe('reviewed');
     });
   });
+
+  describe('clearSource', () => {
+    it('forgets decisions made in one section only', () => {
+      // Arrange
+      triage.setState('checkpoint\0/a.ts', 'reviewed');
+      triage.setState('compare:main...feature\0/a.ts', 'flagged');
+      triage.setState('/a.ts', 'reviewed');
+
+      // Act
+      triage.clearSource('checkpoint');
+
+      // Assert
+      expect(triage.toJSON()).toEqual({ 'compare:main...feature\0/a.ts': 'flagged', '/a.ts': 'reviewed' });
+    });
+  });
 });

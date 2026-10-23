@@ -62,6 +62,7 @@ Branch commits and current workspace changes in one panel. Triage them one by on
 - Change just the base or just the target from the committed section's right-click menu
 - Tree view grouped by directory with git status badges (A, M, D, R); folder icons show `reviewed/total` and turn green once every file inside is reviewed, orange when one is flagged
 - Worktree aware: open a repository and its worktrees side by side, keep worktrees inside the repository folder, or turn on VS Code's `git.detectWorktrees` setting — each one gets its own group in the panel with its own review state
+- Review only what changed since your last pass: a review checkpoint is set when you copy the review for your LLM, when the agent skill starts working, or with **Set Review Checkpoint** (milestone icon). A `Since last review` section then lists just the changes made after it, committed or not, each starting unreviewed, and `Current changes` folds away
 - Filter by status: All / Unreviewed / Reviewed / Flagged
 - Progress in the status bar: `12/47 reviewed`
 
@@ -140,7 +141,7 @@ Run **Sieve: Install Agent Skill** from the Command Palette and choose Claude Co
 
 Each repository and worktree keeps its own review, so an agent working in a worktree picks up exactly the annotations you left there.
 
-The skill is read-only: it can fix your code, but only you resolve or delete annotations in Sieve.
+Before its first edit, the skill sets a review checkpoint, so the Review Desk then shows only what the agent changed. Apart from that, it is read-only: it can fix your code, but only you resolve or delete annotations in Sieve.
 
 ---
 
@@ -191,7 +192,7 @@ Scoped to the Review Desk panel — zero conflicts with your keybindings.
 - **Zero cloud** — everything runs locally
 - **Zero telemetry** — no data collection
 - **Zero network** — no outbound connections
-- **Clean repositories** — new review state lives under `~/.sieve/workspaces`; Sieve no longer writes project or Git metadata
+- **Clean repositories** — new review state lives under `~/.sieve/workspaces`; Sieve no longer writes project or Git metadata. A review checkpoint only adds unreferenced Git objects, as `git stash create` does, which `git gc` prunes on its own
 
 ---
 

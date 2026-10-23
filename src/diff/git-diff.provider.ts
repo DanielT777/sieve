@@ -4,10 +4,13 @@ import type { Change, Repository } from '../git';
 import { Status } from '../git';
 import type { DiffProvider } from './diff.provider';
 import type { Disposable } from '../shared/disposable';
-import type { ChangedFile, DiffSource, FileDiff } from './diff.model';
+import type { ChangedFile, DiffSource, FileDiff, ReviewCheckpoint } from './diff.model';
+import { CHECKPOINT_SOURCE_ID } from './diff.model';
 import { toFileStatus, toRelativePath } from './git.mapper';
 import { parseDiff, buildAddedFileDiff } from './diff.parser';
 import { toRefChoices, type RefChoice } from './git-refs';
+import { diffSnapshotFile, diffSnapshots, snapshotWorkingTree } from './git-snapshot';
+import { logger } from '../shared/logger';
 
 export type ComparisonSeparator = '...' | '..';
 
@@ -37,7 +40,8 @@ const NO_COMPARISON: DiffSource = {
 /**
  * Implements DiffProvider on top of the VS Code built-in git extension.
  *
- * Shows committed branch changes beside staged, unstaged, and untracked work.
+ * Shows committed branch changes beside staged, unstaged, and untracked work,
+ * and, once a review checkpoint is set, what changed since that checkpoint.
  */
 export class GitDiffProvider implements DiffProvider {
   private readonly _workingTreeSource: DiffSource = {
@@ -52,8 +56,12 @@ export class GitDiffProvider implements DiffProvider {
   private _comparisonRefs: ComparisonRefs = {
     mode: 'branch', base: undefined, target: undefined, separator: '...',
   };
+  private _checkpoint: ReviewCheckpoint | undefined;
+  private _checkpointSource: DiffSource | undefined;
+  /** The working tree snapshot from the last refresh, which checkpoint diffs compare to. */
+  private _currentTree: string | undefined;
 
-  constructor(private readonly _repo: Repository) {}
+  constructor(private readonly _repo: Repository, private readonly _gitPath = 'git') {}
 
   async getChangedFiles(): Promise<readonly ChangedFile[]> {
     const committedSource = this._customSpec
@@ -68,11 +76,30 @@ export class GitDiffProvider implements DiffProvider {
     return [
       ...this._mapChanges(committed, committedSource),
       ...this._workingTreeChanges(),
+      // Last, so a file in both working-tree sections opens as part of this one.
+      ...await this._checkpointChanges(),
     ];
   }
 
   getSources(): readonly DiffSource[] {
-    return [this._committedSource, this._workingTreeSource];
+    const sources = [this._committedSource, this._workingTreeSource];
+    return this._checkpointSource ? [this._checkpointSource, ...sources] : sources;
+  }
+
+  getCheckpoint(): ReviewCheckpoint | undefined {
+    return this._checkpoint;
+  }
+
+  setCheckpoint(checkpoint: ReviewCheckpoint | undefined): void {
+    this._checkpoint = checkpoint;
+    if (!checkpoint) this._checkpointSource = undefined;
+  }
+
+  /** Snapshots the working tree as it is now and makes it the checkpoint. */
+  async createCheckpoint(): Promise<ReviewCheckpoint> {
+    const checkpoint = { tree: await this._snapshot(), createdAt: Date.now() };
+    this.setCheckpoint(checkpoint);
+    return checkpoint;
   }
 
   private _workingTreeChanges(): readonly ChangedFile[] {
@@ -96,6 +123,12 @@ export class GitDiffProvider implements DiffProvider {
   }
 
   async getDiff(file: ChangedFile): Promise<FileDiff> {
+    if (file.source?.id === CHECKPOINT_SOURCE_ID) {
+      const root = this._repo.rootUri.fsPath;
+      const paths = [file.oldPath, file.uri].flatMap(p => p ? [toRelativePath(root, p)] : []);
+      const current = this._currentTree ?? await this._snapshot();
+      return parseDiff(file, await diffSnapshotFile(this._gitPath, root, file.source.baseRef, current, paths));
+    }
     const raw = file.source?.targetRef
       ? await this._repo.diffBetween(file.source.baseRef, file.source.targetRef, file.uri)
       : await this._repo.diffWithHEAD(file.uri);
@@ -132,6 +165,45 @@ export class GitDiffProvider implements DiffProvider {
   async listRefs(): Promise<RefChoice[]> {
     const refs = await this._repo.getRefs({ sort: 'committerdate' });
     return toRefChoices(refs, this._repo.state.HEAD);
+  }
+
+  /** Files whose content differs from the checkpoint, whether or not they were committed since. */
+  private async _checkpointChanges(): Promise<readonly ChangedFile[]> {
+    const checkpoint = this._checkpoint;
+    if (!checkpoint) return [];
+
+    const time = new Date(checkpoint.createdAt).toLocaleString(undefined, {
+      month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit',
+    });
+    const source: DiffSource = {
+      id: CHECKPOINT_SOURCE_ID,
+      label: 'Since last review',
+      description: `Checkpoint ${time} ↔ working tree`,
+      baseRef: checkpoint.tree,
+      targetRef: undefined,
+    };
+    this._checkpointSource = source;
+
+    try {
+      const root = this._repo.rootUri.fsPath;
+      this._currentTree = await this._snapshot();
+      const changes = await diffSnapshots(this._gitPath, root, checkpoint.tree, this._currentTree);
+      return changes.map(change => ({
+        uri: path.join(root, change.path),
+        relativePath: change.path,
+        status: change.status,
+        oldPath: change.oldPath === undefined ? undefined : path.join(root, change.oldPath),
+        source,
+      }));
+    } catch (err) {
+      logger.error('Failed to compare with the review checkpoint', err);
+      this._checkpointSource = { ...source, description: 'Checkpoint unavailable — set a new one' };
+      return [];
+    }
+  }
+
+  private _snapshot(): Promise<string> {
+    return snapshotWorkingTree(this._gitPath, this._repo.rootUri.fsPath);
   }
 
   private _mapChanges(changes: readonly Change[], source: DiffSource): ChangedFile[] {
