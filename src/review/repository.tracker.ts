@@ -1,3 +1,4 @@
+import { watch } from 'fs';
 import * as path from 'path';
 import * as vscode from 'vscode';
 import type { API as GitAPI, Repository } from '../git';
@@ -6,6 +7,7 @@ import { AnnotationStore } from '../annotations/annotation.store';
 import { TriageManager } from './triage.manager';
 import { loadTriage, saveTriage } from './triage.store';
 import { loadCheckpoint } from '../diff/checkpoint.store';
+import { startReviewRound } from './checkpoint.round';
 import type { ReviewRepository } from './review.repository';
 import {
   findRepositoryRoot,
@@ -15,7 +17,7 @@ import {
   type RepositoryKind,
 } from './repository.discovery';
 import { prepareWorkspaceStorage, workspaceStoragePath } from '../shared/workspace-storage';
-import { SIEVE_DIR } from '../shared/config';
+import { CHECKPOINT_FILE, SIEVE_DIR } from '../shared/config';
 import { debounce } from '../shared/debounce';
 import { logger } from '../shared/logger';
 
@@ -152,6 +154,24 @@ export class RepositoryTracker implements vscode.Disposable {
     });
     const watcher = repository.diff.watchChanges(() => this._onDidChangeGitState.fire(repository));
 
+    // The agent skill sets checkpoints by writing the checkpoint file itself.
+    const reloadCheckpoint = debounce(() => {
+      void (async () => {
+        const checkpoint = await loadCheckpoint(storagePath);
+        if (checkpoint?.tree === repository.diff.getCheckpoint()?.tree) return;
+        await startReviewRound(repository, checkpoint);
+        this._onDidChangeGitState.fire(repository);
+      })().catch(err => logger.error('Failed to reload the review checkpoint', err));
+    }, 300);
+    let checkpointWatcher: { close(): void } | undefined;
+    try {
+      checkpointWatcher = watch(storagePath, (_event, filename) => {
+        if (filename === CHECKPOINT_FILE) reloadCheckpoint.call();
+      });
+    } catch (err) {
+      logger.error(`Cannot watch ${storagePath} for review checkpoints`, err);
+    }
+
     return {
       repository,
       subscriptions: {
@@ -160,6 +180,8 @@ export class RepositoryTracker implements vscode.Disposable {
           save.flush();
           save.dispose();
           watcher.dispose();
+          checkpointWatcher?.close();
+          reloadCheckpoint.dispose();
         },
       },
     };

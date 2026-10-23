@@ -10,8 +10,13 @@ export class SourceItem extends vscode.TreeItem {
     readonly repository: ReviewRepository,
     readonly children: ReviewDeskItem[],
     fileCount: number,
+    collapsed = false,
   ) {
-    super(source.label, vscode.TreeItemCollapsibleState.Expanded);
+    super(source.label, collapsed
+      ? vscode.TreeItemCollapsibleState.Collapsed
+      : vscode.TreeItemCollapsibleState.Expanded);
+    // VS Code keeps the expansion state of a known id, so a new id is what applies `collapsed`.
+    this.id = `${repository.root}\0${source.id}${collapsed ? '\0collapsed' : ''}`;
     this.description = fileCount > 0
       ? `${fileCount} · ${source.description}`
       : source.description;

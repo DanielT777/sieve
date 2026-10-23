@@ -5,6 +5,7 @@ import * as path from 'path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { diffSnapshots, parseNameStatus, snapshotWorkingTree } from '../../src/diff/git-snapshot';
 import { GitDiffProvider } from '../../src/diff/git-diff.provider';
+import { loadCheckpoint } from '../../src/diff/checkpoint.store';
 import type { Repository } from '../../src/git';
 
 let root: string;
@@ -79,6 +80,24 @@ describe('diffSnapshots', () => {
       { status: 'added', path: 'b.ts', oldPath: undefined },
       { status: 'modified', path: 'c.ts', oldPath: undefined },
     ]);
+  });
+});
+
+describe('agent skill checkpoint script', () => {
+  it('records the same snapshot Sieve would, in a checkpoint file Sieve reads', async () => {
+    write('src/app.ts', 'one\ntwo\nthree\nfour\n');
+    write('src/new.ts', 'new\n');
+    const storage = fs.mkdtempSync(path.join(tmpdir(), 'sieve-storage-'));
+    const script = path.resolve(__dirname, '../../skills/address-sieve-review/scripts/checkpoint.sh');
+
+    // Agents often run from a subfolder.
+    execFileSync('sh', [script, storage], { cwd: path.join(root, 'src') });
+
+    const checkpoint = await loadCheckpoint(storage);
+    expect(checkpoint?.tree).toBe(await snapshotWorkingTree('git', root));
+    expect(checkpoint?.createdAt).toBeGreaterThan(Date.now() - 60_000);
+    expect(git('status', '--porcelain')).toBe(' M src/app.ts\n?? src/new.ts\n');
+    fs.rmSync(storage, { recursive: true, force: true });
   });
 });
 

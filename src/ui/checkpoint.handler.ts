@@ -1,22 +1,25 @@
 import * as vscode from 'vscode';
 import type { SieveSession } from '../shared/sieve.session';
 import type { ReviewRepository } from '../review/review.repository';
-import { CHECKPOINT_SOURCE_ID } from '../diff/diff.model';
 import { saveCheckpoint } from '../diff/checkpoint.store';
+import { startReviewRound } from '../review/checkpoint.round';
 import { workspaceStoragePath } from '../shared/workspace-storage';
 import { logger } from '../shared/logger';
 import { SourceItem } from './source.item';
 
 /**
- * Snapshots every repository as it is now. From then on, "Since last review"
- * lists only what changes after this point, starting with nothing reviewed.
+ * Snapshots the repositories as they are now. From then on, "Since last review"
+ * lists only what changes after this point.
  */
-export async function setCheckpoint(session: SieveSession): Promise<void> {
+export async function setCheckpoint(
+  session: SieveSession,
+  repositories: readonly ReviewRepository[] = session.repositories(),
+): Promise<void> {
   try {
-    await Promise.all(session.repositories().map(async repository => {
+    await Promise.all(repositories.map(async repository => {
       const checkpoint = await repository.diff.createCheckpoint();
       await saveCheckpoint(checkpoint, workspaceStoragePath(repository.root));
-      repository.triage.clearSource(CHECKPOINT_SOURCE_ID);
+      await startReviewRound(repository, checkpoint);
     }));
   } catch (err) {
     logger.error('Failed to set the review checkpoint', err);
@@ -32,9 +35,8 @@ export async function clearCheckpoint(session: SieveSession, item?: unknown): Pr
     : session.repositories();
   try {
     await Promise.all(repositories.map(async repository => {
-      repository.diff.setCheckpoint(undefined);
       await saveCheckpoint(undefined, workspaceStoragePath(repository.root));
-      repository.triage.clearSource(CHECKPOINT_SOURCE_ID);
+      await startReviewRound(repository, undefined);
     }));
   } catch (err) {
     logger.error('Failed to clear the review checkpoint', err);

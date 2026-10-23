@@ -16,19 +16,22 @@ const EXPORTERS: ReviewExporter[] = [
   new MarkdownExporter(),
 ];
 
-/** Orchestrates the export flow: format selection → build payload → clipboard. */
+/**
+ * Orchestrates the export flow: format selection → build payload → clipboard.
+ * Resolves with the repositories whose review was copied.
+ */
 export class ExportService {
   constructor(private readonly _repositories: () => readonly ReviewRepository[]) {}
 
-  async run(): Promise<void> {
+  async run(): Promise<readonly ReviewRepository[]> {
     const picked = await vscode.window.showQuickPick(
       EXPORTERS.map(e => ({ label: e.label, exporter: e })),
       { placeHolder: 'Choose a format to copy for your LLM' },
     );
-    if (!picked) return;
+    if (!picked) return [];
 
     const repositories = await this._pickRepositories();
-    if (!repositories) return;
+    if (!repositories) return [];
 
     try {
       const prefixes = repositories.length > 1 ? uniqueRepositoryNames(repositories) : [];
@@ -40,17 +43,19 @@ export class ExportService {
         void vscode.window.showInformationMessage(
           'Sieve: No annotations to export. Add annotations to files to include them.',
         );
-        return;
+        return [];
       }
 
       const result = picked.exporter.export(payload);
       await vscode.env.clipboard.writeText(result.content);
       void vscode.window.showInformationMessage(
-        `Sieve: ${payload.length} annotated file(s) copied to clipboard (${picked.exporter.label}).`,
+        `Sieve: ${payload.length} annotated file(s) copied to clipboard (${picked.exporter.label}). Review checkpoint set.`,
       );
+      return repositories;
     } catch (err) {
       logger.error('Export failed', err);
       void vscode.window.showErrorMessage('Sieve: Export failed — see Output panel for details.');
+      return [];
     }
   }
 

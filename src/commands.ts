@@ -34,7 +34,11 @@ export function registerCommands(
       if (s) void flagWithAnnotation(s, item);
     }),
     vscode.commands.registerCommand(Commands.filterByStatus, withSession(s => showFilterQuickPick(s.treeProvider))),
-    vscode.commands.registerCommand(Commands.export, withSession(s => s.exportService.run())),
+    vscode.commands.registerCommand(Commands.export, withSession(async s => {
+      // Copying the review hands it off, so the next pass starts from here.
+      const exported = await s.exportService.run();
+      if (exported.length > 0) await setCheckpoint(s, exported);
+    })),
     vscode.commands.registerCommand(Commands.openDiff, (file: unknown) => {
       if (isChangedFile(file)) void openFileDiff(file);
     }),
@@ -52,7 +56,7 @@ export function registerCommands(
     }),
     vscode.commands.registerCommand(Commands.clearReview, withSession(s => clearReview(s))),
     vscode.commands.registerCommand(Commands.installAgentSkill, () => installAgentSkill(context)),
-    vscode.commands.registerCommand(Commands.setCheckpoint, withSession(setCheckpoint)),
+    vscode.commands.registerCommand(Commands.setCheckpoint, withSession(s => setCheckpoint(s))),
     vscode.commands.registerCommand(Commands.clearCheckpoint, withSession(clearCheckpoint)),
   ];
 }

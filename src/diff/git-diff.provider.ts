@@ -86,6 +86,10 @@ export class GitDiffProvider implements DiffProvider {
     return this._checkpointSource ? [this._checkpointSource, ...sources] : sources;
   }
 
+  getCheckpoint(): ReviewCheckpoint | undefined {
+    return this._checkpoint;
+  }
+
   setCheckpoint(checkpoint: ReviewCheckpoint | undefined): void {
     this._checkpoint = checkpoint;
     if (!checkpoint) this._checkpointSource = undefined;
