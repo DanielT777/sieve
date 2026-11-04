@@ -134,6 +134,7 @@ function fakeGit(initialRoots: string[]) {
   } as unknown as Repository);
 
   const api = {
+    git: { path: 'git' },
     get repositories() { return roots.map(wrap); },
     onDidOpenRepository: opened.event,
     onDidCloseRepository: closed.event,

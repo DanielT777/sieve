@@ -95,6 +95,8 @@ export interface Repository {
 }
 
 export interface API {
+  /** The Git executable VS Code runs. */
+  readonly git: { readonly path: string };
   readonly repositories: Repository[];
   readonly onDidOpenRepository: Event<Repository>;
   readonly onDidCloseRepository: Event<Repository>;

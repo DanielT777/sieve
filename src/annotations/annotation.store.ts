@@ -76,6 +76,14 @@ export class AnnotationStore {
     await this._persist();
   }
 
+  /** Moves annotations from one section to another; undefined is the working tree. */
+  async moveSource(from: string, to: string | undefined): Promise<void> {
+    if (!this._annotations.some(a => a.sourceId === from)) return;
+    this._annotations = this._annotations.map(a => a.sourceId === from ? { ...a, sourceId: to } : a);
+    this._rebuildIndexes();
+    await this._persist();
+  }
+
   async clearAll(): Promise<void> {
     this._annotations = [];
     this._byId.clear();

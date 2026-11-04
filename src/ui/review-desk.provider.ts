@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import type { ChangedFile } from '../diff/diff.model';
-import { reviewKey } from '../diff/diff.model';
+import { CHECKPOINT_SOURCE_ID, reviewKey } from '../diff/diff.model';
 import type { ReviewState } from '../review/triage.enum';
 import type { ReviewStats } from '../review/review.session';
 import type { ReviewFile, ReviewRepository } from '../review/review.repository';
@@ -143,14 +143,18 @@ export class ReviewDeskProvider
     const repositoryFiles = this._filesByRepository.get(repository) ?? [];
     const isVisible = (file: ChangedFile): boolean =>
       this._filter === 'all' || repository.triage.getState(reviewKey(file)) === this._filter;
-    return repository.diff.getSources().map(source => {
+    const sources = repository.diff.getSources();
+    // While a checkpoint is set, its section is the one to review; current changes fold away.
+    const hasCheckpoint = sources.some(source => source.id === CHECKPOINT_SOURCE_ID);
+    return sources.map(source => {
       const sourceFiles = repositoryFiles.filter(file => file.source?.id === source.id);
       const children = sourceFiles.some(isVisible)
         ? buildReviewTree(sourceFiles, repository, isVisible)
         : [new MessageItem(
             sourceFiles.length > 0 ? 'No files match the current filter' : 'No changes',
           )];
-      return new SourceItem(source, repository, children, sourceFiles.length);
+      const collapsed = hasCheckpoint && source.id === 'working-tree';
+      return new SourceItem(source, repository, children, sourceFiles.length, collapsed);
     });
   }
 }

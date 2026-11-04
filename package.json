@@ -142,6 +142,18 @@
         "title": "Install Agent Skill",
         "category": "Sieve",
         "icon": "$(sparkle)"
+      },
+      {
+        "command": "sieve.setCheckpoint",
+        "title": "Set Review Checkpoint",
+        "category": "Sieve",
+        "icon": "$(milestone)"
+      },
+      {
+        "command": "sieve.clearCheckpoint",
+        "title": "Clear Review Checkpoint",
+        "category": "Sieve",
+        "icon": "$(close)"
       }
     ],
     "menus": {
@@ -162,9 +174,14 @@
           "group": "navigation@3"
         },
         {
-          "command": "sieve.filterByStatus",
+          "command": "sieve.setCheckpoint",
           "when": "view == sieve.reviewDesk",
           "group": "navigation@4"
+        },
+        {
+          "command": "sieve.filterByStatus",
+          "when": "view == sieve.reviewDesk",
+          "group": "navigation@5"
         },
         {
           "command": "sieve.clearReview",
@@ -187,6 +204,11 @@
           "command": "sieve.changeComparisonTarget",
           "when": "view == sieve.reviewDesk && viewItem == committedSource",
           "group": "0_compare@2"
+        },
+        {
+          "command": "sieve.clearCheckpoint",
+          "when": "view == sieve.reviewDesk && viewItem == checkpointSource",
+          "group": "inline"
         },
         {
           "command": "sieve.markReviewed",
